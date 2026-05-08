@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { VehicleModal } from "../components/VehicleModal";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   available: { label: "Бош / Свободен", color: "bg-green-50 text-green-600 border-green-200" },
@@ -42,8 +43,6 @@ export default function Transport() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [panelSaving, setPanelSaving] = useState(false);
-  const [editFields, setEditFields] = useState<any>({});
 
   const fetchTransport = useCallback(async () => {
     setLoading(true);
@@ -74,11 +73,6 @@ export default function Transport() {
       if (body.success && body.data) {
         const vData = body.data;
         setSelectedVehicle(vData);
-        setEditFields({
-          status: vData.status || "available",
-          current_task: vData.current_task || "",
-          fuel_level: vData.fuel_level ?? 50,
-        });
       }
     } catch {
       toast.error("Ошибка загрузки данных транспорта");
@@ -87,24 +81,6 @@ export default function Transport() {
     }
   };
 
-  const saveDetail = async () => {
-    if (!selectedVehicle) return;
-    setPanelSaving(true);
-    try {
-      const res = await api.patch(`/transport/${selectedVehicle.id}`, editFields);
-      if (res.data.success) {
-        toast.success("Сакталды / Сохранено");
-        setSelectedVehicle((v: any) => ({ ...v, ...editFields }));
-        await fetchTransport();
-      } else {
-        toast.error("Ошибка: " + (res.data.error || "Не удалось сохранить"));
-      }
-    } catch {
-      toast.error("Ошибка сохранения");
-    } finally {
-      setPanelSaving(false);
-    }
-  };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,144 +224,13 @@ export default function Transport() {
           )}
         </div>
 
-        {/* Detail Side Panel */}
         <AnimatePresence>
           {selectedVehicle && (
-            <motion.div
-              key="detail"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
-              className="w-full xl:w-[400px] border-l border-gray-100 bg-white flex flex-col overflow-hidden"
-            >
-              {/* Panel header */}
-              <div className="h-14 flex items-center gap-3 px-5 border-b border-gray-100 shrink-0">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {selectedVehicle.plate || "Загрузка..."}
-                  </p>
-                  <p className="text-xs text-gray-400">{selectedVehicle.name}</p>
-                </div>
-                <button
-                  onClick={() => setSelectedVehicle(null)}
-                  className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {detailLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-gray-300 animate-spin" />
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto p-5 space-y-5">
-                  {/* Status */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1.5 font-medium uppercase tracking-wide">
-                      Статус
-                    </label>
-                    <Select value={editFields.status || "available"} onValueChange={(v) => setEditFields((p: any) => ({ ...p, status: v }))}>
-                      <SelectTrigger className="h-9 text-sm bg-white border-gray-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">Бош / Свободен</SelectItem>
-                        <SelectItem value="working">Иштейт / Работает</SelectItem>
-                        <SelectItem value="repair">Оңдоодо / В ремонте</SelectItem>
-                        <SelectItem value="off">Өчүк / Выключен</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Driver */}
-                  {(selectedVehicle.driver_name || selectedVehicle.driver_phone) && (
-                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Айдоочу / Водитель</p>
-                      {selectedVehicle.driver_name && (
-                        <div className="flex items-center gap-2 text-sm text-gray-800">
-                          <User className="w-4 h-4 text-gray-400" />
-                          {selectedVehicle.driver_name}
-                        </div>
-                      )}
-                      {selectedVehicle.driver_phone && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <a href={`tel:${selectedVehicle.driver_phone}`} className="text-[#3B82F6] hover:underline">
-                            {selectedVehicle.driver_phone}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Fuel */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1.5 font-medium uppercase tracking-wide">
-                      Жанар-май / Топливо: {editFields.fuel_level ?? selectedVehicle.fuel_level ?? 0}%
-                    </label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={editFields.fuel_level ?? selectedVehicle.fuel_level ?? 0}
-                      onChange={(e) => setEditFields((p: any) => ({ ...p, fuel_level: Number(e.target.value) }))}
-                      className="w-full"
-                    />
-                    <FuelBar value={editFields.fuel_level ?? selectedVehicle.fuel_level ?? 0} />
-                  </div>
-
-                  {/* Current task */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1.5 font-medium uppercase tracking-wide">
-                      Учурдагы тапшырма / Текущая задача
-                    </label>
-                    <input
-                      type="text"
-                      value={editFields.current_task ?? ""}
-                      onChange={(e) => setEditFields((p: any) => ({ ...p, current_task: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 focus:border-[#3B82F6]"
-                      placeholder="Иш тапшырмасы..."
-                    />
-                  </div>
-
-                  {/* Stats */}
-                  {selectedVehicle.mileage && (
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="text-xs text-gray-500 font-medium mb-2">Жүгүрүүчүлүгү / Пробег</p>
-                      <p className="text-2xl font-bold text-gray-900">{selectedVehicle.mileage} <span className="text-sm font-normal text-gray-400">км</span></p>
-                    </div>
-                  )}
-
-                  {/* History */}
-                  {Array.isArray(selectedVehicle.history) && selectedVehicle.history.length > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Тарых / История</p>
-                      <div className="space-y-2">
-                        {selectedVehicle.history.slice(0, 10).map((h: any, i: number) => (
-                          <div key={i} className="flex items-center gap-3 text-sm py-2 border-b border-gray-50 last:border-0">
-                            <span className="text-gray-400 text-xs shrink-0">
-                              {h.date ? new Date(h.date).toLocaleDateString("ru-RU") : "—"}
-                            </span>
-                            <span className="text-gray-700 flex-1">{h.action || h.description || "—"}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={saveDetail}
-                    disabled={panelSaving}
-                    className="w-full py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {panelSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {panelSaving ? "Сакталууда..." : "Сактоо / Сохранить"}
-                  </button>
-                </div>
-              )}
-            </motion.div>
+            <VehicleModal
+              vehicle={selectedVehicle}
+              onClose={() => setSelectedVehicle(null)}
+              onUpdate={fetchTransport}
+            />
           )}
         </AnimatePresence>
       </div>
