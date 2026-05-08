@@ -1,68 +1,43 @@
-export const API_BASE = 'https://tazalyk-api.vercel.app/api';
+import axios from 'axios';
 
-function getHeaders() {
-  const token = localStorage.getItem('token');
-  return {
+const API_URL = import.meta.env.VITE_API_URL || 'https://tazalyk-api.vercel.app/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-}
+  },
+});
 
-async function handleResponse(r: Response) {
-  if (r.status === 401) {
-    localStorage.clear();
-    window.location.href = '/login';
-    return { success: false, data: null, error: 'Unauthorized' };
+// Request interceptor to add token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return r.json();
-}
+);
 
-export const api = {
-  get: async (path: string) => {
-    try {
-      const r = await fetch(API_BASE + path, { headers: getHeaders() });
-      return handleResponse(r);
-    } catch (e) {
-      console.error(e);
-      return { success: false, data: null, error: String(e) };
+// Response interceptor to handle 401
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Using window.location to force a reload and redirect to login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
-  },
-  post: async (path: string, body: any) => {
-    try {
-      const r = await fetch(API_BASE + path, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(body)
-      });
-      return handleResponse(r);
-    } catch (e) {
-      console.error(e);
-      return { success: false, data: null, error: String(e) };
-    }
-  },
-  patch: async (path: string, body: any) => {
-    try {
-      const r = await fetch(API_BASE + path, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify(body)
-      });
-      return handleResponse(r);
-    } catch (e) {
-      console.error(e);
-      return { success: false, data: null, error: String(e) };
-    }
-  },
-  delete: async (path: string) => {
-    try {
-      const r = await fetch(API_BASE + path, {
-        method: 'DELETE',
-        headers: getHeaders()
-      });
-      return handleResponse(r);
-    } catch (e) {
-      console.error(e);
-      return { success: false, data: null, error: String(e) };
-    }
-  },
-};
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+export { api };

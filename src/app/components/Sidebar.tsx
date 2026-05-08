@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "./ui/utils";
+import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
   { to: "/", label: "Главная", icon: LayoutDashboard, end: true },
@@ -27,6 +28,8 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
+  const { logout } = useAuth();
+
   return (
     <aside className="w-60 shrink-0 h-screen bg-white border-r border-gray-100 flex flex-col shadow-sm z-10">
       {/* Logo */}
@@ -86,12 +89,8 @@ export function Sidebar() {
 
       {/* Bottom user quick info */}
       <div className="p-3 border-t border-gray-100">
-        <div 
-          onClick={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            window.location.href = "/login";
-          }}
+        <div
+          onClick={logout}
           className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="w-8 h-8 rounded-full bg-[#3B82F6] flex items-center justify-center text-white text-xs shrink-0" style={{ fontWeight: 600 }}>
