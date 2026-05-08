@@ -21,10 +21,11 @@ export default function Login() {
     try {
       const res = await api.post("/auth/login", { email, password });
 
-      const { success, data } = res.data;
+      // The backend returns { success: true, token: "...", user: { ... } }
+      const { success, token, user } = res.data;
 
-      if (success && data?.access_token) {
-        login(data.access_token, data.user);
+      if (success && token) {
+        login(token, user);
         toast.success("Вход выполнен успешно");
         navigate("/");
       } else {

@@ -52,9 +52,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
             const response = await api.get('/auth/me');
-            // FastAPI usually returns data in response.data.data or just response.data
-            const userData = response.data?.data || response.data;
-            if (userData) {
+            // Support both { success: true, data: user } and flat { success: true, ...user }
+            const resData = response.data;
+            const userData = resData?.success ? (resData.data || resData.user || resData) : resData;
+
+            if (userData && (userData.id || userData.email)) {
                 setUser(userData);
                 localStorage.setItem('user', JSON.stringify(userData));
             }
