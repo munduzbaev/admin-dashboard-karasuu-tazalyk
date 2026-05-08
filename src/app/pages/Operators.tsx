@@ -329,7 +329,7 @@ export default function Operators() {
             </div>
             <form onSubmit={handleAddSubmit} className="p-6 space-y-4">
               {[
-                { label: "Аты-жөнү / ФИО *", key: "name", type: "text", placeholder: "Айгерим Матова" },
+                { label: "Аты-жөнү / ФИО *", key: "name", type: "text", placeholder: "Айгерим Асанова" },
                 { label: "Email *", key: "email", type: "email", placeholder: "operator@tazalyk.kg" },
                 { label: "Сырсөз / Пароль *", key: "password", type: "password", placeholder: "••••••••" },
               ].map((f) => (
