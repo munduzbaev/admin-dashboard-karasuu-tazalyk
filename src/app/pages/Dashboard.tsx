@@ -64,13 +64,20 @@ export default function Dashboard() {
           api.get("/analytics"),
           api.get("/applications?limit=5"),
         ]);
-        if (analyticsRes.success) setAnalytics(analyticsRes.data);
-        if (appsRes.success) {
-          const data = Array.isArray(appsRes.data) ? appsRes.data : [];
+
+        const analyticsBody = analyticsRes.data;
+        const appsBody = appsRes.data;
+
+        if (analyticsBody.success) {
+          setAnalytics(analyticsBody.data);
+        }
+
+        if (appsBody.success) {
+          const data = Array.isArray(appsBody.data) ? appsBody.data : [];
           setRecentApps(data.slice(0, 5));
         }
       } catch (e) {
-        console.error(e);
+        console.error("Dashboard data load error:", e);
       } finally {
         setLoading(false);
       }

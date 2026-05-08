@@ -82,8 +82,9 @@ export default function Applications() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
       const res = await api.get(`/applications?${params}`);
-      if (res.success) {
-        setApplications(Array.isArray(res.data) ? res.data : []);
+      const body = res.data;
+      if (body.success) {
+        setApplications(Array.isArray(body.data) ? body.data : []);
       } else {
         toast.error("Ошибка загрузки заявок");
         setApplications([]);
@@ -104,11 +105,12 @@ export default function Applications() {
   const handleStatusChange = async (id: string, status: string) => {
     try {
       const res = await api.patch(`/applications/${id}`, { status });
-      if (res.success) {
+      const body = res.data;
+      if (body.success) {
         toast.success("Статус изменён / Статус өзгөртүлдү");
         await fetchApplications();
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось изменить статус"));
+        toast.error("Ошибка: " + (body.error || "Не удалось изменить статус"));
       }
     } catch {
       toast.error("Ошибка при изменении статуса");
@@ -118,12 +120,13 @@ export default function Applications() {
   const handleDelete = async (id: string) => {
     try {
       const res = await api.delete(`/applications/${id}`);
-      if (res.success) {
+      const body = res.data;
+      if (body.success) {
         toast.success("Заявка удалена / Арыз жок кылынды");
         setSelectedId(null);
         await fetchApplications();
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось удалить"));
+        toast.error("Ошибка: " + (body.error || "Не удалось удалить"));
       }
     } catch {
       toast.error("Ошибка при удалении");

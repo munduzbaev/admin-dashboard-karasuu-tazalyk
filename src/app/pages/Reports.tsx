@@ -49,18 +49,33 @@ export default function Reports() {
           api.get(`/reports/summary?${params}`),
           api.get(`/reports/applications?${params}`),
         ]);
-        if (sumRes.success) setSummary(sumRes.data);
-        else setSummary(null);
-        if (appsRes.success) setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
-        else {
+
+        const sumBody = sumRes.data;
+        const appsBody = appsRes.data;
+
+        if (sumBody.success) {
+          setSummary(sumBody.data);
+        } else {
+          setSummary(null);
+        }
+
+        if (appsBody.success) {
+          setApplications(Array.isArray(appsBody.data) ? appsBody.data : []);
+        } else {
           // fallback to main applications endpoint
           const fallback = await api.get("/applications");
-          if (fallback.success) setApplications(Array.isArray(fallback.data) ? fallback.data : []);
+          const fbBody = fallback.data;
+          if (fbBody.success) {
+            setApplications(Array.isArray(fbBody.data) ? fbBody.data : []);
+          }
         }
       } catch {
         try {
           const fallback = await api.get("/applications");
-          if (fallback.success) setApplications(Array.isArray(fallback.data) ? fallback.data : []);
+          const fbBody = fallback.data;
+          if (fbBody.success) {
+            setApplications(Array.isArray(fbBody.data) ? fbBody.data : []);
+          }
         } catch { }
       } finally {
         setLoading(false);

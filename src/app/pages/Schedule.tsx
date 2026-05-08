@@ -39,10 +39,24 @@ export default function Schedule() {
         api.get("/schedules"),
         api.get("/schedules/tomorrow"),
       ]);
-      if (allRes.success) setSchedules(Array.isArray(allRes.data) ? allRes.data : []);
-      if (tomRes.success) setTomorrow(Array.isArray(tomRes.data) ? tomRes.data : []);
+      const allBody = allRes.data;
+      const tomBody = tomRes.data;
+
+      if (allBody.success) {
+        setSchedules(Array.isArray(allBody.data) ? allBody.data : []);
+      } else {
+        setSchedules([]);
+      }
+
+      if (tomBody.success) {
+        setTomorrow(Array.isArray(tomBody.data) ? tomBody.data : []);
+      } else {
+        setTomorrow([]);
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Fetch schedule error:", e);
+      setSchedules([]);
+      setTomorrow([]);
     } finally {
       setLoading(false);
     }
@@ -83,12 +97,13 @@ export default function Schedule() {
       const res = editingId
         ? await api.patch(`/schedules/${editingId}`, payload)
         : await api.post("/schedules", payload);
-      if (res.success) {
+      const resBody = res.data;
+      if (resBody.success) {
         toast.success(editingId ? "График жаңыртылды / Обновлено" : "График кошулду / Добавлено");
         setShowModal(false);
         await fetchData();
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось сохранить"));
+        toast.error("Ошибка: " + (resBody.error || "Не удалось сохранить"));
       }
     } catch {
       toast.error("Ошибка сохранения");
@@ -100,7 +115,7 @@ export default function Schedule() {
   const handleDelete = async (id: string) => {
     try {
       const res = await api.delete(`/schedules/${id}`);
-      if (res.success) {
+      if (res.data.success) {
         toast.success("Жок кылынды / Удалено");
         await fetchData();
       } else {

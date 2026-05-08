@@ -27,12 +27,13 @@ export default function NewApplication() {
       setLoadingDeps(true);
       try {
         const res = await api.get("/waste_types");
-        if (res.success && Array.isArray(res.data)) {
-          setWasteTypes(res.data);
-          if (res.data.length > 0) setSelectedWasteType(res.data[0].id || res.data[0].name);
+        const body = res.data;
+        if (body.success && Array.isArray(body.data)) {
+          setWasteTypes(body.data);
+          if (body.data.length > 0) setSelectedWasteType(body.data[0].id || body.data[0].name);
         }
       } catch (e) {
-        console.error(e);
+        console.error("New application load deps error:", e);
       } finally {
         setLoadingDeps(false);
       }
@@ -61,11 +62,12 @@ export default function NewApplication() {
         institution_name: type === "institution" ? institutionName.trim() : undefined,
         status: "new",
       });
-      if (res.success) {
+      const body = res.data;
+      if (body.success) {
         toast.success("Арыз ийгиликтүү түзүлдү / Заявка успешно создана!");
         navigate("/applications");
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось создать заявку"));
+        toast.error("Ошибка: " + (body.error || "Не удалось создать заявку"));
       }
     } catch {
       toast.error("Ошибка при создании заявки");

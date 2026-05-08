@@ -55,8 +55,12 @@ export default function Operators() {
     setLoading(true);
     try {
       const res = await api.get("/users");
-      if (res.success) setUsers(Array.isArray(res.data) ? res.data : []);
-      else setUsers([]);
+      const body = res.data;
+      if (body.success) {
+        setUsers(Array.isArray(body.data) ? body.data : []);
+      } else {
+        setUsers([]);
+      }
     } catch {
       setUsers([]);
     } finally {
@@ -97,11 +101,12 @@ export default function Operators() {
       else if (action === "role") res = await api.patch(`/users/${id}/role`, body);
       else if (action === "delete") res = await api.delete(`/users/${id}`);
 
-      if (res?.success) {
+      const resBody = res?.data;
+      if (resBody?.success) {
         toast.success("Аткарылды / Выполнено");
         await fetchUsers();
       } else {
-        toast.error("Ошибка: " + (res?.error || "Не удалось выполнить"));
+        toast.error("Ошибка: " + (resBody?.error || "Не удалось выполнить"));
       }
     } catch {
       toast.error("Ошибка действия");
@@ -124,15 +129,16 @@ export default function Operators() {
         password: form.password,
         role: form.role,
       });
-      if (res.success) {
-        const newId = res.user?.id || res.data?.id;
+      const resBody = res.data;
+      if (resBody.success) {
+        const newId = resBody.user?.id || resBody.data?.id;
         if (newId) await api.patch(`/users/${newId}/approve`, {});
         toast.success("Оператор кошулду / Оператор добавлен");
         setShowModal(false);
         setForm(EMPTY_FORM);
         await fetchUsers();
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось зарегистрировать"));
+        toast.error("Ошибка: " + (resBody.error || "Не удалось зарегистрировать"));
       }
     } catch {
       toast.error("Ошибка регистрации");

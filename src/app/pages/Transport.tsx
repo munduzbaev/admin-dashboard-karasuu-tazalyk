@@ -49,9 +49,14 @@ export default function Transport() {
     setLoading(true);
     try {
       const res = await api.get("/transport");
-      if (res.success) setVehicles(Array.isArray(res.data) ? res.data : []);
-      else setVehicles([]);
-    } catch {
+      const body = res.data;
+      if (body.success) {
+        setVehicles(Array.isArray(body.data) ? body.data : []);
+      } else {
+        setVehicles([]);
+      }
+    } catch (err) {
+      console.error("Fetch transport error:", err);
       setVehicles([]);
     } finally {
       setLoading(false);
@@ -60,17 +65,19 @@ export default function Transport() {
 
   useEffect(() => { fetchTransport(); }, [fetchTransport]);
 
-  const openDetail = async (id: string) => {
+  const openDetail = async (id: string | number) => {
     setDetailLoading(true);
     setSelectedVehicle({ id });
     try {
       const res = await api.get(`/transport/${id}`);
-      if (res.success) {
-        setSelectedVehicle(res.data);
+      const body = res.data;
+      if (body.success && body.data) {
+        const vData = body.data;
+        setSelectedVehicle(vData);
         setEditFields({
-          status: res.data.status || "available",
-          current_task: res.data.current_task || "",
-          fuel_level: res.data.fuel_level ?? 50,
+          status: vData.status || "available",
+          current_task: vData.current_task || "",
+          fuel_level: vData.fuel_level ?? 50,
         });
       }
     } catch {
@@ -85,12 +92,12 @@ export default function Transport() {
     setPanelSaving(true);
     try {
       const res = await api.patch(`/transport/${selectedVehicle.id}`, editFields);
-      if (res.success) {
+      if (res.data.success) {
         toast.success("Сакталды / Сохранено");
         setSelectedVehicle((v: any) => ({ ...v, ...editFields }));
         await fetchTransport();
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось сохранить"));
+        toast.error("Ошибка: " + (res.data.error || "Не удалось сохранить"));
       }
     } catch {
       toast.error("Ошибка сохранения");
@@ -114,13 +121,13 @@ export default function Transport() {
         driver_phone: form.driver_phone,
         fuel_level: Number(form.fuel_level),
       });
-      if (res.success) {
+      if (res.data.success) {
         toast.success("Транспорт кошулду / Добавлено");
         setShowAddModal(false);
         setForm(EMPTY_FORM);
         await fetchTransport();
       } else {
-        toast.error("Ошибка: " + (res.error || "Не удалось добавить"));
+        toast.error("Ошибка: " + (res.data.error || "Не удалось добавить"));
       }
     } catch {
       toast.error("Ошибка добавления");

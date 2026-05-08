@@ -35,10 +35,11 @@ export default function Profile() {
       setLoading(true);
       try {
         const res = await api.get("/auth/me");
-        if (res.success || res.user) {
-          const u = res.user || res.data;
+        const body = res.data;
+        if (body.success || body.user) {
+          const u = body.user || body.data;
           setUser(u);
-          if (res.notification_prefs) setNotifPrefs(res.notification_prefs);
+          if (body.notification_prefs) setNotifPrefs(body.notification_prefs);
           localStorage.setItem("user", JSON.stringify(u));
         } else {
           // fallback to localStorage
@@ -72,13 +73,14 @@ export default function Profile() {
         email: editEmail,
         phone: editPhone,
       });
-      if (result.success) {
+      const body = result.data;
+      if (body.success) {
         const updatedUser = { ...user, name: editName, email: editEmail, phone: editPhone };
         localStorage.setItem("user", JSON.stringify(updatedUser));
         setUser(updatedUser);
-        toast.success("Профиль сохранён / Профиль сохранён");
+        toast.success("Профиль сохранён");
       } else {
-        toast.error("Ошибка: " + (result.error || "Не удалось сохранить"));
+        toast.error("Ошибка: " + (body.error || "Не удалось сохранить"));
       }
     } catch (e) {
       toast.error("Ошибка соединения");
@@ -104,13 +106,14 @@ export default function Profile() {
         old_password: oldPassword,
         new_password: newPassword,
       });
-      if (result.success) {
+      const body = result.data;
+      if (body.success) {
         toast.success("Пароль изменён");
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
-        toast.error("Ошибка: " + (result.error || "Неверный старый пароль"));
+        toast.error("Ошибка: " + (body.error || "Неверный старый пароль"));
       }
     } catch {
       toast.error("Ошибка соединения");
@@ -125,7 +128,8 @@ export default function Profile() {
 
     try {
       const result = await api.patch(`/users/${user?.id}/notif-prefs`, { [key]: value });
-      if (result.success) {
+      const body = result.data;
+      if (body.success) {
         toast.success("Настройки сохранены");
       } else {
         // Revert on error

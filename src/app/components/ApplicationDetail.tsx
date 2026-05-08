@@ -82,8 +82,9 @@ export function ApplicationDetail({
     if (!application?.id) return;
     setMessagesLoading(true);
     api.get(`/applications/${application.id}/messages`).then((res) => {
-      if (res.success) {
-        setMessages(Array.isArray(res.data) ? res.data : []);
+      const body = res.data;
+      if (body.success) {
+        setMessages(Array.isArray(body.data) ? body.data : []);
       }
     }).finally(() => setMessagesLoading(false));
   }, [application?.id]);
@@ -104,8 +105,9 @@ export function ApplicationDetail({
         text: chatMessage.trim(),
         user_id: user.id,
       });
-      if (res.success) {
-        setMessages((prev) => [...prev, res.data || {
+      const body = res.data;
+      if (body.success) {
+        setMessages((prev) => [...prev, body.data || {
           id: Date.now(),
           sender: "operator",
           text: chatMessage.trim(),
