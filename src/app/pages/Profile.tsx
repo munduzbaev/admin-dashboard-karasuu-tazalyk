@@ -5,6 +5,7 @@ import { api } from "../api";
 import { toast } from "sonner";
 
 const ROLE_MAP: Record<string, string> = {
+  super_admin: "Супер Админ",
   admin: "Администратор",
   operator: "Оператор",
   senior_operator: "Ст. оператор",

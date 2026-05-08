@@ -28,7 +28,13 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const filteredNav = NAV_ITEMS.filter(item => {
+    if (item.to === "/operators") return isAdmin;
+    return true;
+  });
 
   return (
     <aside className="w-60 shrink-0 h-screen bg-white border-r border-gray-100 flex flex-col shadow-sm z-10">
@@ -53,7 +59,7 @@ export function Sidebar() {
           Навигация
         </p>
         <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => (
+          {filteredNav.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}

@@ -18,6 +18,7 @@ import {
 } from "../components/ui/alert-dialog";
 
 const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Супер Админ",
   admin: "Администратор",
   operator: "Оператор",
   senior_operator: "Ст. оператор",
@@ -49,7 +50,7 @@ export default function Operators() {
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
   })();
-  const isAdmin = currentUser.role === "admin";
+  const isAdmin = currentUser.role === "admin" || currentUser.role === "super_admin";
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -199,7 +200,7 @@ export default function Operators() {
             <>
               <div className="fixed inset-0" onClick={() => setShowRoleMenu(false)} />
               <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[150px] z-10">
-                {["operator", "senior_operator", "admin"].map((r) => (
+                {["operator", "senior_operator", "admin", "super_admin"].map((r) => (
                   <button
                     key={r}
                     onClick={() => { handleAction(u.id, "role", { role: r }); setShowRoleMenu(false); }}
