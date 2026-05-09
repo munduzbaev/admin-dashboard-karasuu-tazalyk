@@ -313,9 +313,14 @@ export default function Applications() {
                         )}
                       >
                         <td className="px-4 py-3">
-                          <span className="text-xs text-gray-500 font-mono" style={{ fontWeight: 500 }}>
-                            #{String(app.id).slice(0, 8)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 font-mono" style={{ fontWeight: 500 }}>
+                              #{String(app.id).slice(0, 8)}
+                            </span>
+                            {app.media_url && (
+                              <span title="Сүрөт бар / Есть фото" className="text-sm">📸</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <StatusBadge status={app.status} />

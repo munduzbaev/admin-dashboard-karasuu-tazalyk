@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   User,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { ImageModal } from "./ImageModal";
@@ -59,6 +60,15 @@ function formatTime(dateStr: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getGoogleDrivePreview(url: string) {
+  if (!url) return null;
+  const fileIdMatch = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
+  if (fileIdMatch && fileIdMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+  }
+  return null;
 }
 
 export function ApplicationDetail({
@@ -287,6 +297,38 @@ export function ApplicationDetail({
                     />
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Customer Photo (media_url from Google Drive) */}
+          {application.media_url && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm text-gray-500 uppercase tracking-wide" style={{ fontWeight: 600 }}>
+                  📸 Фото от клиента
+                </h3>
+                <a
+                  href={application.media_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#3B82F6] hover:underline flex items-center gap-1"
+                >
+                  Открыть фото <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-white border border-gray-200">
+                  <img
+                    src={getGoogleDrivePreview(application.media_url) || application.media_url}
+                    alt="Фото от клиента"
+                    className="w-full h-full object-contain cursor-pointer"
+                    onClick={() => window.open(application.media_url, "_blank")}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://placehold.co/600x400?text=Нажмите+Открыть+фото";
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
