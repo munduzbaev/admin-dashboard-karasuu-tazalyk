@@ -33,8 +33,9 @@ import { toast } from "sonner";
 const STATUS_OPTIONS = [
   { value: "new", label: "Жаңы / Новая" },
   { value: "in_progress", label: "Иштелүүдө / В работе" },
+  { value: "completed", label: "Жабылды / Завершено" },
+  { value: "cancelled", label: "Жокко чыгарылды / Отменено" },
   { value: "waiting_user", label: "Күтүүдө / Ожидание" },
-  { value: "closed", label: "Жабылды / Закрыто" },
   { value: "pending_review", label: "Кароодо / На рассмотрении" },
 ];
 
@@ -256,13 +257,13 @@ export function ApplicationDetail({
                 В работу
               </Button>
               <Button
-                onClick={() => handleStatusSelect("closed")}
-                disabled={application.status === "closed"}
+                onClick={() => handleStatusSelect("completed")}
+                disabled={application.status === "completed"}
                 className="gap-2 bg-green-600 hover:bg-green-700 text-white border-0 rounded-lg"
                 size="sm"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
-                Жаап коюу / Закрыть
+                Жабылды / Завершить
               </Button>
               <Button
                 onClick={() => handleStatusSelect("pending_review")}

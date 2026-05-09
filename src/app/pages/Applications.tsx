@@ -33,8 +33,9 @@ const STATUS_OPTIONS = [
   { value: "all", label: "Все статусы" },
   { value: "new", label: "Жаңы / Новая" },
   { value: "in_progress", label: "Иштелүүдө / В работе" },
+  { value: "completed", label: "Жабылды / Завершено" },
+  { value: "cancelled", label: "Жокко чыгарылды / Отменено" },
   { value: "waiting_user", label: "Күтүүдө / Ожидание" },
-  { value: "closed", label: "Жабылды / Закрыто" },
   { value: "pending_review", label: "Кароодо / На рассмотрении" },
 ];
 
@@ -184,7 +185,7 @@ export default function Applications() {
     all: applications.length,
     new: applications.filter((a) => a.status === "new").length,
     in_progress: applications.filter((a) => a.status === "in_progress").length,
-    closed: applications.filter((a) => a.status === "closed").length,
+    completed: applications.filter((a) => a.status === "completed" || a.status === "closed").length,
   };
 
   return (
@@ -211,7 +212,7 @@ export default function Applications() {
               { key: "all", label: "Бардыгы / Все", color: "bg-gray-100 text-gray-700" },
               { key: "new", label: "Жаңы / Новые", color: "bg-blue-50 text-blue-700" },
               { key: "in_progress", label: "Иштелүүдө / В работе", color: "bg-amber-50 text-amber-700" },
-              { key: "closed", label: "Жабылды / Закрыто", color: "bg-green-50 text-green-700" },
+              { key: "completed", label: "Жабылды / Завершено", color: "bg-green-50 text-green-700" },
             ].map((s) => (
               <button
                 key={s.key}

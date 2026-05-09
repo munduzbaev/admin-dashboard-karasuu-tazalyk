@@ -90,7 +90,7 @@ export default function Dashboard() {
     total: appStats.total ?? 0,
     new: appStats.new ?? 0,
     inProgress: appStats.in_progress ?? 0,
-    closed: appStats.closed ?? 0,
+    completed: (appStats.completed ?? 0) + (appStats.closed ?? 0),
   };
 
   // Build chart data from applications_history
@@ -105,7 +105,7 @@ export default function Dashboard() {
   const pieData = [
     { name: "Жаңы / Новые", value: stats.new },
     { name: "Иштелүүдө / В работе", value: stats.inProgress },
-    { name: "Жабылды / Закрыто", value: stats.closed },
+    { name: "Жабылды / Завершено", value: stats.completed },
   ].filter((d) => d.value > 0);
 
   const statCards = [
@@ -131,8 +131,8 @@ export default function Dashboard() {
       trendUp: null,
     },
     {
-      label: "Жабылды / Закрыто",
-      value: stats.closed,
+      label: "Жабылды / Завершено",
+      value: stats.completed,
       icon: <CheckCircle className="w-5 h-5" />,
       color: "bg-green-50 text-green-600",
       trendUp: true,

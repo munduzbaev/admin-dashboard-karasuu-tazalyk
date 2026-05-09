@@ -30,7 +30,7 @@ export default function NewApplication() {
         const body = res.data;
         if (body.success && Array.isArray(body.data)) {
           setWasteTypes(body.data);
-          if (body.data.length > 0) setSelectedWasteType(body.data[0].id || body.data[0].name);
+          if (body.data.length > 0) setSelectedWasteType(body.data[0].name || body.data[0].id);
         }
       } catch (e) {
         console.error("New application load deps error:", e);
@@ -186,7 +186,7 @@ export default function NewApplication() {
                     onChange={(e) => setSelectedWasteType(e.target.value)}
                   >
                     {wasteTypes.map((wt: any) => (
-                      <option key={wt.id || wt.name} value={wt.id || wt.name}>
+                      <option key={wt.id || wt.name} value={wt.name || wt.id}>
                         {wt.name}
                       </option>
                     ))}

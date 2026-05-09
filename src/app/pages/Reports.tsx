@@ -127,8 +127,8 @@ export default function Reports() {
   const userTypeData: any[] = Object.entries(summary?.by_user_type || {}).map(([name, value]) => ({ name, value }));
 
   const total = summary?.total ?? applications.length;
-  const completed = summary?.completed ?? applications.filter((a) => a.status === "closed").length;
-  const pending = summary?.pending ?? applications.filter((a) => ["new", "in_progress", "waiting_user"].includes(a.status)).length;
+  const completed = summary?.completed ?? applications.filter((a) => a.status === "completed" || a.status === "closed").length;
+  const pending = summary?.pending ?? applications.filter((a) => ["new", "in_progress", "waiting_user", "pending_review"].includes(a.status)).length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

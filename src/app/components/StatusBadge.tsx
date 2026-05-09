@@ -16,10 +16,15 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; dot: str
     className: "bg-purple-50 text-purple-700 border-purple-200",
     dot: "bg-purple-500",
   },
-  closed: {
-    label: "Жабылды / Закрыто",
+  completed: {
+    label: "Жабылды / Завершено",
     className: "bg-green-50 text-green-700 border-green-200",
     dot: "bg-green-500",
+  },
+  cancelled: {
+    label: "Жокко чыгарылды / Отменено",
+    className: "bg-red-50 text-red-700 border-red-200",
+    dot: "bg-red-500",
   },
   pending_review: {
     label: "Кароодо / На рассмотрении",
@@ -27,8 +32,8 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; dot: str
     dot: "bg-slate-500",
   },
   // Legacy compatibility
-  completed: {
-    label: "Выполнена",
+  closed: {
+    label: "Жабылды / Закрыто",
     className: "bg-green-50 text-green-700 border-green-200",
     dot: "bg-green-500",
   },
