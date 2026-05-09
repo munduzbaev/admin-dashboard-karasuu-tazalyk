@@ -317,8 +317,15 @@ export default function Dashboard() {
                     onClick={() => navigate("/applications")}
                     className="border-b border-gray-50 last:border-0 hover:bg-gray-50/70 cursor-pointer transition-colors"
                   >
-                    <td className="px-5 py-3 text-xs text-gray-500 font-mono" style={{ fontWeight: 500 }}>
-                      #{String(app.id).slice(0, 8)}
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-mono" style={{ fontWeight: 500 }}>
+                          #{String(app.id).slice(0, 8)}
+                        </span>
+                        {app.media_url && (
+                          <span title="Есть фото" className="text-[10px]">📸</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={app.status} />
