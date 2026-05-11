@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router";
 import { Filter, ChevronUp, ChevronDown, Trash2, Loader2 } from "lucide-react";
 import { Header } from "../components/Header";
 import { StatusBadge } from "../components/StatusBadge";
@@ -75,6 +76,33 @@ export default function Applications() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlId = searchParams.get("id");
+
+  useEffect(() => {
+    if (urlId && applications.length > 0) {
+      const found = applications.find((a) => String(a.id) === urlId);
+      if (found && selectedId !== urlId) {
+        setSelectedId(urlId);
+        setTimeout(() => {
+          const el = document.getElementById(`app-row-${urlId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
+      }
+    }
+  }, [urlId, applications]);
+
+  const handleCloseDetail = () => {
+    setSelectedId(null);
+    if (urlId) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("id");
+      setSearchParams(newParams, { replace: true });
+    }
+  };
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -306,6 +334,7 @@ export default function Applications() {
                   ) : (
                     filtered.map((app) => (
                       <tr
+                        id={`app-row-${app.id}`}
                         key={app.id}
                         onClick={() => setSelectedId(String(app.id) === selectedId ? null : String(app.id))}
                         className={cn(
@@ -395,7 +424,7 @@ export default function Applications() {
             >
               <ApplicationDetail
                 application={selectedApp}
-                onClose={() => setSelectedId(null)}
+                onClose={handleCloseDetail}
                 onStatusChange={handleStatusChange}
                 onRefresh={fetchApplications}
               />

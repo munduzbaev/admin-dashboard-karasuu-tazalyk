@@ -62,7 +62,7 @@ export default function Dashboard() {
       try {
         const [analyticsRes, appsRes] = await Promise.all([
           api.get("/analytics"),
-          api.get("/applications?limit=5"),
+          api.get("/applications"),
         ]);
 
         const analyticsBody = analyticsRes.data;
@@ -74,7 +74,7 @@ export default function Dashboard() {
 
         if (appsBody.success) {
           const data = Array.isArray(appsBody.data) ? appsBody.data : [];
-          setRecentApps(data.slice(0, 5));
+          setRecentApps(data); // Will slice later for table, but keep all for stats
         }
       } catch (e) {
         console.error("Dashboard data load error:", e);
@@ -85,22 +85,34 @@ export default function Dashboard() {
     load();
   }, []);
 
-  const appStats = analytics?.applications || {};
   const stats = {
-    total: appStats.total ?? 0,
-    new: appStats.new ?? 0,
-    inProgress: appStats.in_progress ?? 0,
-    completed: (appStats.completed ?? 0) + (appStats.closed ?? 0),
+    total: recentApps.length,
+    new: recentApps.filter(a => a.status === "new").length,
+    inProgress: recentApps.filter(a => a.status === "in_progress").length,
+    completed: recentApps.filter(a => a.status === "completed").length,
   };
 
-  // Build chart data from applications_history
-  const history: any[] = appStats.applications_history || [];
-  const areaData = history.length > 0
-    ? history.slice(-14).map((h: any) => ({
-      day: new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
-      requests: h.count ?? 0,
-    }))
-    : [{ day: "—", requests: 0 }];
+  // Build chart data from applications created_at
+  const daysMap: Record<string, number> = {};
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    daysMap[dateStr] = 0;
+  }
+  recentApps.forEach(app => {
+    if (app.created_at) {
+      const dateStr = app.created_at.slice(0, 10);
+      if (daysMap[dateStr] !== undefined) {
+        daysMap[dateStr]++;
+      }
+    }
+  });
+
+  const areaData = Object.entries(daysMap).map(([date, count]) => ({
+    day: new Date(date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+    requests: count,
+  }));
 
   const pieData = [
     { name: "Жаңы / Новые", value: stats.new },
@@ -311,7 +323,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {recentApps.map((app) => (
+                {recentApps.slice(0, 5).map((app) => (
                   <tr
                     key={app.id}
                     onClick={() => navigate("/applications")}

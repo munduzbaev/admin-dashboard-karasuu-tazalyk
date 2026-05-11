@@ -10,7 +10,6 @@ import {
   Calendar,
   Truck,
   BarChart2,
-  UserCircle,
   LogOut,
 } from "lucide-react";
 import { cn } from "./ui/utils";
@@ -24,7 +23,6 @@ const NAV_ITEMS = [
   { to: "/transport", label: "Транспорт", icon: Truck, end: false },
   { to: "/reports", label: "Отчёты", icon: BarChart2, end: false },
   { to: "/operators", label: "Операторы", icon: Users, end: false },
-  { to: "/profile", label: "Профиль", icon: UserCircle, end: false },
 ];
 
 export function Sidebar() {

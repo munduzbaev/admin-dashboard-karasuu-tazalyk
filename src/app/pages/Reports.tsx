@@ -117,18 +117,40 @@ export default function Reports() {
   };
 
   // Chart data
-  const historyData: any[] = (summary?.applications_history || []).map((h: any) => ({
-    name: new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
-    requests: h.count ?? 0,
+  const daysMap: Record<string, number> = {};
+  if (dateFrom && dateTo) {
+    const fromD = new Date(dateFrom);
+    const toD = new Date(dateTo);
+    for (let d = new Date(fromD); d <= toD; d.setDate(d.getDate() + 1)) {
+      daysMap[d.toISOString().slice(0, 10)] = 0;
+    }
+  }
+  applications.forEach((a) => {
+    if (a.created_at) {
+      const dateStr = a.created_at.slice(0, 10);
+      if (daysMap[dateStr] !== undefined) {
+        daysMap[dateStr]++;
+      }
+    }
+  });
+  const historyData = Object.entries(daysMap).sort().map(([date, count]) => ({
+    name: new Date(date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+    requests: count,
   }));
 
-  const wasteTypeData: any[] = Object.entries(summary?.by_waste_type || {}).map(([name, value]) => ({ name, value }));
+  const wasteMap: Record<string, number> = {};
+  applications.forEach(a => {
+    const wt = a.waste_type || "Не указано";
+    wasteMap[wt] = (wasteMap[wt] || 0) + 1;
+  });
+  const wasteTypeData = Object.entries(wasteMap).map(([name, value]) => ({ name, value }));
+
   const sourceData: any[] = Object.entries(summary?.by_source || {}).map(([name, value]) => ({ name, value }));
   const userTypeData: any[] = Object.entries(summary?.by_user_type || {}).map(([name, value]) => ({ name, value }));
 
-  const total = summary?.total ?? applications.length;
-  const completed = summary?.completed ?? applications.filter((a) => a.status === "completed" || a.status === "closed").length;
-  const pending = summary?.pending ?? applications.filter((a) => ["new", "in_progress", "waiting_user", "pending_review"].includes(a.status)).length;
+  const total = applications.length;
+  const completed = applications.filter((a) => a.status === "completed").length;
+  const pending = applications.filter((a) => ["new", "in_progress"].includes(a.status)).length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
