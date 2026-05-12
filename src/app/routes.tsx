@@ -10,6 +10,7 @@ import Transport from "./pages/Transport";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import NewApplication from "./pages/NewApplication";
+import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function Layout() {
@@ -45,7 +46,10 @@ export const router = createBrowserRouter([
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <Profile /> },
       { path: "settings", element: <Settings /> },
-      { path: "*", element: <Navigate to="/" replace /> },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);
