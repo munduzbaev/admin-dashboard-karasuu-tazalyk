@@ -292,13 +292,15 @@ export function ApplicationDetail({
               </InfoRow>
               <InfoRow icon={<Truck className="w-4 h-4" />} label="🚛 Транспорт">
                 {application.vehicle_id ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm font-medium text-gray-800">
-                      {assignedTransport ? `${assignedTransport.name} — ${assignedTransport.plate}` : "Загрузка..."}
-                    </span>
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 font-bold uppercase border border-green-200">
-                      Иштейт
-                    </span>
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-800">
+                        {application.transport ? `${application.transport.name} — ${application.transport.plate}` : (assignedTransport ? `${assignedTransport.name} — ${assignedTransport.plate}` : "Загрузка...")}
+                      </span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 font-bold uppercase border border-green-200">
+                        Иштейт
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 mt-1">

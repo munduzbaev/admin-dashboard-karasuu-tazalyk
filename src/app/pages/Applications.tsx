@@ -301,19 +301,20 @@ export default function Applications() {
                       { field: "id" as SortField, label: "ID", w: "w-24" },
                       { field: "status" as SortField, label: "Статус", w: "w-36" },
                       { field: "created_at" as SortField, label: "Адрес / Дата", w: "" },
-                    ].map((col) => (
+                      { field: "id" as SortField, label: "Транспорт", w: "w-40" },
+                    ].map((col, idx) => (
                       <th
-                        key={col.field}
+                        key={idx}
                         className={cn(
                           "text-left px-4 py-3 text-xs text-gray-500 cursor-pointer hover:text-gray-800 select-none transition-colors",
                           col.w
                         )}
                         style={{ fontWeight: 600 }}
-                        onClick={() => handleSort(col.field)}
+                        onClick={() => col.field && handleSort(col.field)}
                       >
                         <span className="inline-flex items-center gap-1">
                           {col.label}
-                          <SortIcon field={col.field} />
+                          {col.field !== "id" || idx === 0 ? <SortIcon field={col.field} /> : null}
                         </span>
                       </th>
                     ))}
@@ -363,6 +364,18 @@ export default function Applications() {
                           <p className="text-xs text-gray-400 mt-0.5">
                             {app.created_at ? formatDate(app.created_at) : "—"}
                           </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          {app.transport ? (
+                            <div className="flex flex-col">
+                              <span className="text-xs font-medium text-gray-700">{app.transport.name}</span>
+                              <span className="text-[10px] text-gray-400 font-mono">{app.transport.plate}</span>
+                            </div>
+                          ) : app.vehicle_id ? (
+                            <span className="text-xs text-amber-600">Назначен (ID: {String(app.vehicle_id).slice(0, 4)})</span>
+                          ) : (
+                            <span className="text-xs text-gray-400">Не назначен</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {app.phone ? (
