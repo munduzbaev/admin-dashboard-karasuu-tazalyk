@@ -35,6 +35,7 @@ const STATUS_OPTIONS = [
   { value: "new", label: "Жаңы / Новая" },
   { value: "in_progress", label: "Иштелүүдө / В работе" },
   { value: "completed", label: "Жабылды / Завершено" },
+  { value: "closed", label: "Жабылды / Закрыто" },
   { value: "cancelled", label: "Жокко чыгарылды / Отменено" },
   { value: "waiting_user", label: "Күтүүдө / Ожидание" },
   { value: "pending_review", label: "Кароодо / На рассмотрении" },
