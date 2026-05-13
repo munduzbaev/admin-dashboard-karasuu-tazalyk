@@ -15,6 +15,9 @@ import {
   Loader2,
   ExternalLink,
   Truck,
+  AlertTriangle,
+  ShieldCheck,
+  RotateCcw,
 } from "lucide-react";
 import {
   Dialog,
@@ -37,6 +40,8 @@ import {
 import { cn } from "./ui/utils";
 import { api } from "../api";
 import { toast } from "sonner";
+import { can, getRole } from "../permissions";
+import { useAuth } from "../context/AuthContext";
 
 const STATUS_OPTIONS = [
   { value: "new", label: "Жаңы / Новая" },
@@ -46,6 +51,7 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Жокко чыгарылды / Отменено" },
   { value: "waiting_user", label: "Күтүүдө / Ожидание" },
   { value: "pending_review", label: "Кароодо / На рассмотрении" },
+  { value: "pending_admin_approval", label: "Админ кароосунда / На одобрении" },
 ];
 
 interface ApplicationDetailProps {
@@ -87,6 +93,9 @@ export function ApplicationDetail({
   onStatusChange,
   onRefresh,
 }: ApplicationDetailProps) {
+  const { user } = useAuth();
+  const canApproveRefusal = can.approveRefusal(user);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modalIndex, setModalIndex] = useState(0);
   const [chatMessage, setChatMessage] = useState("");
@@ -99,6 +108,13 @@ export function ApplicationDetail({
   const [selectedTransportId, setSelectedTransportId] = useState<string>("");
   const [fetchingTransport, setFetchingTransport] = useState(false);
   const [assignedTransport, setAssignedTransport] = useState<any>(null);
+
+  // Refusal workflow state
+  const [refusalModalOpen, setRefusalModalOpen] = useState(false);
+  const [refusalNotes, setRefusalNotes] = useState("");
+  const [submittingRefusal, setSubmittingRefusal] = useState(false);
+  const [adminNote, setAdminNote] = useState("");
+  const [decisionLoading, setDecisionLoading] = useState<"approve" | "return" | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -227,6 +243,56 @@ export function ApplicationDetail({
       onStatusChange(String(application.id), "in_progress");
     } catch (err) {
       toast.error("Ошибка при назначении транспорта");
+    }
+  };
+
+  // ── Refusal workflow ──────────────────────────────────────────
+
+  const submitRefusal = async () => {
+    if (!refusalNotes.trim()) {
+      toast.error("Укажите причину отказа");
+      return;
+    }
+    setSubmittingRefusal(true);
+    try {
+      const res = await api.post(`/applications/${application.id}/reject`, {
+        refusal_notes: refusalNotes.trim(),
+        operator_id: user?.id || null,
+      });
+      if (res.data?.success) {
+        toast.success("Отправлено на одобрение администратора");
+        setRefusalModalOpen(false);
+        setRefusalNotes("");
+        onRefresh?.();
+      } else {
+        toast.error(res.data?.error || "Ошибка при отправке");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    } finally {
+      setSubmittingRefusal(false);
+    }
+  };
+
+  const decideRefusal = async (decision: "approve" | "return") => {
+    setDecisionLoading(decision);
+    try {
+      const res = await api.patch(`/applications/${application.id}/refusal/${decision}`, {
+        approver_id: user?.id || null,
+        admin_note: adminNote.trim() || undefined,
+        return_to_status: decision === "return" ? "in_progress" : undefined,
+      });
+      if (res.data?.success) {
+        toast.success(decision === "approve" ? "Отказ подтверждён" : "Возвращено оператору");
+        setAdminNote("");
+        onRefresh?.();
+      } else {
+        toast.error(res.data?.error || "Ошибка");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    } finally {
+      setDecisionLoading(null);
     }
   };
 
@@ -439,7 +505,7 @@ export function ApplicationDetail({
                 </>
               )}
 
-              {!["new", "in_progress", "completed", "closed"].includes(application.status) && (
+              {!["new", "in_progress", "completed", "closed"].includes(application.status) && application.status !== "pending_admin_approval" && (
                 <Button
                   onClick={() => handleStatusSelect("in_progress")}
                   variant="outline"
@@ -450,7 +516,98 @@ export function ApplicationDetail({
                   В работу
                 </Button>
               )}
+
+              {/* "Клиент отказался" — доступна оператору в new/in_progress/completed */}
+              {["new", "in_progress", "completed"].includes(application.status) && (
+                <Button
+                  onClick={() => setRefusalModalOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 rounded-lg"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Клиент отказался
+                </Button>
+              )}
             </div>
+
+            {/* Admin approval block for refusal */}
+            {application.status === "pending_admin_approval" && (
+              <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/50 p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-orange-900">Запрос на отказ от клиента</p>
+                    {application.refusal_notes && (
+                      <p className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap">
+                        {application.refusal_notes}
+                      </p>
+                    )}
+                    {application.refused_at && (
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        Создан: {formatDate(application.refused_at)}
+                      </p>
+                    )}
+                    {application.refusal_signature_url && (
+                      <a
+                        href={application.refusal_signature_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-[#3B82F6] hover:underline mt-2"
+                      >
+                        ✍️ Посмотреть подпись клиента
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {canApproveRefusal ? (
+                  <>
+                    <Textarea
+                      value={adminNote}
+                      onChange={(e) => setAdminNote(e.target.value)}
+                      placeholder="Комментарий (необязательно)"
+                      className="min-h-0 h-16 text-sm bg-white"
+                      rows={2}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => decideRefusal("approve")}
+                        disabled={decisionLoading !== null}
+                        size="sm"
+                        className="gap-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                      >
+                        {decisionLoading === "approve" ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        )}
+                        Подтвердить отказ
+                      </Button>
+                      <Button
+                        onClick={() => decideRefusal("return")}
+                        disabled={decisionLoading !== null}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-gray-300 rounded-lg"
+                      >
+                        {decisionLoading === "return" ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        )}
+                        Вернуть оператору
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-orange-700 bg-orange-100 border border-orange-200 rounded-lg p-2">
+                    Ожидает одобрения администратора
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Media */}
@@ -644,6 +801,69 @@ export function ApplicationDetail({
               className="bg-[#3B82F6] text-white hover:bg-[#2563EB] disabled:opacity-50"
             >
               Дайындоо / Назначить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refusal Modal — operator describes why client refused */}
+      <Dialog open={refusalModalOpen} onOpenChange={(open) => {
+        setRefusalModalOpen(open);
+        if (!open) setRefusalNotes("");
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-500" />
+              Клиент отказался
+            </DialogTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Заявка #{String(application.id).slice(0, 8)} — {application.address}
+            </p>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <div>
+              <label className="block text-sm text-gray-700 mb-1.5 font-medium">
+                Причина отказа <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                value={refusalNotes}
+                onChange={(e) => setRefusalNotes(e.target.value)}
+                placeholder="Опишите, что сказал клиент, обстоятельства отказа..."
+                className="min-h-24 text-sm"
+                rows={4}
+                autoFocus
+              />
+              <p className="text-xs text-gray-400 mt-1.5">
+                После отправки заявка получит статус «На одобрении» и будет ждать решения администратора.
+                {application.vehicle_id && (
+                  <span className="block mt-1 text-amber-600">
+                    ⚠ Назначенный транспорт будет освобождён.
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="border-gray-200"
+              onClick={() => setRefusalModalOpen(false)}
+              disabled={submittingRefusal}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={submitRefusal}
+              disabled={!refusalNotes.trim() || submittingRefusal}
+              className="bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 gap-2"
+            >
+              {submittingRefusal ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              Отправить на одобрение
             </Button>
           </DialogFooter>
         </DialogContent>

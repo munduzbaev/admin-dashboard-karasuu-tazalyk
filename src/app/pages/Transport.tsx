@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { VehicleModal } from "../components/VehicleModal";
+import { can } from "../permissions";
+import { useAuth } from "../context/AuthContext";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   available: { label: "Бош / Свободен", color: "bg-green-50 text-green-600 border-green-200" },
@@ -36,6 +38,8 @@ function FuelBar({ value }: { value: number }) {
 }
 
 export default function Transport() {
+  const { user } = useAuth();
+  const canAdd = can.addTransport(user);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
@@ -126,14 +130,16 @@ export default function Transport() {
             <p className="text-sm text-gray-500">
               Жалпы / Всего: <span className="text-gray-900 font-semibold">{vehicles.length}</span>
             </p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm flex items-center gap-2 transition-colors"
-              style={{ fontWeight: 500 }}
-            >
-              <Plus className="w-4 h-4" />
-              Кошуу / Добавить
-            </button>
+            {canAdd && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm flex items-center gap-2 transition-colors"
+                style={{ fontWeight: 500 }}
+              >
+                <Plus className="w-4 h-4" />
+                Кошуу / Добавить
+              </button>
+            )}
           </div>
 
           {loading ? (

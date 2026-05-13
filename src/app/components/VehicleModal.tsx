@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import { toast } from "sonner";
+import { can } from "../permissions";
 import {
     Select,
     SelectContent,
@@ -43,7 +44,8 @@ export function VehicleModal({ vehicle: initialVehicle, onClose, onUpdate }: Veh
     const [editForm, setEditForm] = useState({ ...initialVehicle });
     const [saving, setSaving] = useState(false);
 
-    const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+    const isAdmin = can.editTransport(user);
+    const canAddExpense = can.editTransportExpenses(user);
 
     useEffect(() => {
         setVehicle(initialVehicle);
@@ -290,7 +292,7 @@ export function VehicleModal({ vehicle: initialVehicle, onClose, onUpdate }: Veh
                                 < DollarSign className="w-5 h-5 text-green-500" />
                                 <h3 className="text-lg font-bold text-gray-900">Расходы / Чыгашалар</h3>
                             </div>
-                            {!showAddExpense && (
+                            {!showAddExpense && canAddExpense && (
                                 <button
                                     onClick={() => setShowAddExpense(true)}
                                     className="flex items-center gap-2 px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-green-200 active:scale-95"

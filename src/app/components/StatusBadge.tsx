@@ -31,6 +31,11 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; dot: str
     className: "bg-slate-50 text-slate-700 border-slate-200",
     dot: "bg-slate-500",
   },
+  pending_admin_approval: {
+    label: "Админ кароосунда / На одобрении",
+    className: "bg-orange-50 text-orange-700 border-orange-200",
+    dot: "bg-orange-500",
+  },
   // Legacy compatibility
   closed: {
     label: "Жабылды / Закрыто",

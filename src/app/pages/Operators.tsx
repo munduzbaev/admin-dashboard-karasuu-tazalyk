@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { cn } from "../components/ui/utils";
 import { api } from "../api";
 import { toast } from "sonner";
+import { can } from "../permissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,6 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Супер Админ",
   admin: "Администратор",
   operator: "Оператор",
-  senior_operator: "Ст. оператор",
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -50,7 +50,10 @@ export default function Operators() {
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
   })();
-  const isAdmin = currentUser.role === "admin" || currentUser.role === "super_admin";
+  const canView = can.viewStaff(currentUser);
+  const canApproveReg = can.approveRegistration(currentUser);
+  const canChangeRole = can.changeUserRole(currentUser);
+  const canDelete = can.deleteUser(currentUser);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -71,10 +74,10 @@ export default function Operators() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  if (!isAdmin) {
+  if (!canView) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <Header title="Операторлор / Операторы" showSearch={false} />
+        <Header title="Сотрудники" showSearch={false} />
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-6">
           <ShieldAlert className="w-16 h-16 text-gray-200" />
           <h2 className="text-xl font-semibold text-gray-700">Жетишүү тыюу салынган / Доступ запрещён</h2>
@@ -132,8 +135,11 @@ export default function Operators() {
       });
       const resBody = res.data;
       if (resBody.success) {
-        const newId = resBody.user?.id || resBody.data?.id;
-        if (newId) await api.patch(`/users/${newId}/approve`, {});
+        const newId = resBody.user?.id;
+        if (newId) {
+          // Auto-approve since admin is creating directly
+          await api.patch(`/users/${newId}/approve`, {});
+        }
         toast.success("Оператор кошулду / Оператор добавлен");
         setShowModal(false);
         setForm(EMPTY_FORM);
@@ -141,8 +147,9 @@ export default function Operators() {
       } else {
         toast.error("Ошибка: " + (resBody.error || "Не удалось зарегистрировать"));
       }
-    } catch {
-      toast.error("Ошибка регистрации");
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.error || "Ошибка регистрации";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -163,25 +170,27 @@ export default function Operators() {
             <span className={cn("text-xs px-2 py-0.5 rounded-full border", sc)} style={{ fontWeight: 500 }}>
               {STATUS_LABEL[u.status] || u.status}
             </span>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Чындап эле жок кылуу керекпи?</AlertDialogTitle>
-                  <AlertDialogDescription>Бул аракет кайтарылгыс / Это действие необратимо.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Жок / Отмена</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleAction(u.id, "delete")} className="bg-red-600 hover:bg-red-700">
-                    Ооба / Удалить
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {canDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Чындап эле жок кылуу керекпи?</AlertDialogTitle>
+                    <AlertDialogDescription>Бул аракет кайтарылгыс / Это действие необратимо.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Жок / Отмена</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleAction(u.id, "delete")} className="bg-red-600 hover:bg-red-700">
+                      Ооба / Удалить
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 
@@ -190,17 +199,22 @@ export default function Operators() {
         {/* Role selector */}
         <div className="relative mb-3">
           <button
-            onClick={() => setShowRoleMenu((v) => !v)}
-            className="text-sm text-gray-500 flex items-center gap-1 hover:text-gray-700 transition-colors"
+            onClick={() => canChangeRole && setShowRoleMenu((v) => !v)}
+            disabled={!canChangeRole}
+            className={cn(
+              "text-sm flex items-center gap-1 transition-colors",
+              canChangeRole ? "text-gray-500 hover:text-gray-700" : "text-gray-400 cursor-default"
+            )}
+            title={!canChangeRole ? "Только Супер Админ может менять роли" : undefined}
           >
             {ROLE_LABELS[u.role] || u.role}
-            <ChevronDown className="w-3 h-3" />
+            {canChangeRole && <ChevronDown className="w-3 h-3" />}
           </button>
-          {showRoleMenu && (
+          {showRoleMenu && canChangeRole && (
             <>
               <div className="fixed inset-0" onClick={() => setShowRoleMenu(false)} />
               <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[150px] z-10">
-                {["operator", "senior_operator", "admin", "super_admin"].map((r) => (
+                {["operator", "admin", "super_admin"].map((r) => (
                   <button
                     key={r}
                     onClick={() => { handleAction(u.id, "role", { role: r }); setShowRoleMenu(false); }}
@@ -222,7 +236,7 @@ export default function Operators() {
           <span className="truncate">{u.email}</span>
         </div>
 
-        {u.status !== "approved" && (
+        {u.status !== "approved" && canApproveReg && (
           <div className="flex gap-2">
             <button
               onClick={() => handleAction(u.id, "approve")}
@@ -242,6 +256,11 @@ export default function Operators() {
             </button>
           </div>
         )}
+        {u.status !== "approved" && !canApproveReg && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg py-1.5 px-2 text-center">
+            Ожидает одобрения Супер Админа
+          </p>
+        )}
 
         {u.last_login && (
           <p className="text-xs text-gray-300 mt-2">
@@ -255,7 +274,7 @@ export default function Operators() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header
-        title="Операторлор / Операторы"
+        title="Сотрудники"
         searchPlaceholder="Поиск по имени или email..."
         searchValue={search}
         onSearch={setSearch}
@@ -353,8 +372,10 @@ export default function Operators() {
                   onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
                 >
                   <option value="operator">Оператор</option>
-                  <option value="senior_operator">Ст. оператор</option>
                   <option value="admin">Администратор</option>
+                  {currentUser.role === "super_admin" && (
+                    <option value="super_admin">Супер Админ</option>
+                  )}
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
