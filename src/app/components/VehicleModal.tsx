@@ -118,11 +118,12 @@ export function VehicleModal({ vehicle: initialVehicle, onClose, onUpdate }: Veh
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md" onClick={onClose}>
             <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
@@ -180,6 +181,23 @@ export function VehicleModal({ vehicle: initialVehicle, onClose, onUpdate }: Veh
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20"
                                         value={editForm.plate}
                                         onChange={e => setEditForm({ ...editForm, plate: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Водитель</label>
+                                    <input
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20"
+                                        value={editForm.driver_name || ""}
+                                        onChange={e => setEditForm({ ...editForm, driver_name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Тел. водителя</label>
+                                    <input
+                                        type="tel"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20"
+                                        value={editForm.driver_phone || ""}
+                                        onChange={e => setEditForm({ ...editForm, driver_phone: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-1.5">

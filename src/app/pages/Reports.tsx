@@ -145,8 +145,28 @@ export default function Reports() {
   });
   const wasteTypeData = Object.entries(wasteMap).map(([name, value]) => ({ name, value }));
 
-  const sourceData: any[] = Object.entries(summary?.by_source || {}).map(([name, value]) => ({ name, value }));
-  const userTypeData: any[] = Object.entries(summary?.by_user_type || {}).map(([name, value]) => ({ name, value }));
+  const SOURCE_LABELS: Record<string, string> = {
+    whatsapp: "WhatsApp",
+    phone: "Телефон",
+    website: "Сайт",
+    app: "Приложение",
+    resident: "Житель / Жашоочу",
+    institution: "Учреждение / Мекеме",
+    in_person: "Лично / Жеке",
+  };
+  const USER_TYPE_LABELS: Record<string, string> = {
+    resident: "Житель / Жашоочу",
+    institution: "Учреждение / Мекеме",
+  };
+
+  const sourceData: any[] = Object.entries(summary?.by_source || {}).map(([name, value]) => ({
+    name: SOURCE_LABELS[name] ?? name,
+    value,
+  }));
+  const userTypeData: any[] = Object.entries(summary?.by_user_type || {}).map(([name, value]) => ({
+    name: USER_TYPE_LABELS[name] ?? name,
+    value,
+  }));
 
   const total = applications.length;
   const completed = applications.filter((a) => a.status === "completed").length;

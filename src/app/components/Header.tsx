@@ -3,6 +3,7 @@ import { Search, Bell, ChevronDown, LogOut, Settings, Moon, HelpCircle } from "l
 import { Input } from "./ui/input";
 import { useNavigate } from "react-router";
 import { api } from "../api";
+import { toast } from "sonner";
 
 interface HeaderProps {
   title: string;
@@ -20,11 +21,22 @@ export function Header({
   showSearch = true,
 }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    return saved ? saved === "dark" : document.documentElement.classList.contains("dark");
+  });
 
   const [newApps, setNewApps] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
 
   const navigate = useNavigate();
 
@@ -60,11 +72,7 @@ export function Header({
   const toggleDarkMode = () => {
     const next = !darkMode;
     setDarkMode(next);
-    if (next) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   const markAllRead = async () => {
@@ -98,8 +106,8 @@ export function Header({
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-100 flex items-center px-6 gap-4 shrink-0 relative z-20">
-      <h1 className="text-gray-900 mr-auto" style={{ fontSize: 18, fontWeight: 600 }}>
+    <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center px-6 gap-4 shrink-0 relative z-20">
+      <h1 className="text-gray-900 dark:text-gray-100 mr-auto" style={{ fontSize: 18, fontWeight: 600 }}>
         {title}
       </h1>
 
@@ -118,7 +126,7 @@ export function Header({
       {/* Notifications */}
       <div className="relative">
         <button
-          onClick={() => setShowNotifications(v => !v)}
+          onClick={() => { setShowNotifications(v => !v); setShowMenu(false); }}
           className="relative w-9 h-9 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
         >
           <Bell className="w-4 h-4 text-gray-500" />
@@ -132,9 +140,9 @@ export function Header({
         {showNotifications && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 flex flex-col animate-in fade-in overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Уведомления</h3>
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-50 flex flex-col animate-in fade-in overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <h3 className="text-gray-900 dark:text-gray-100" style={{ fontWeight: 700 }}>Уведомления</h3>
                 {unreadCount > 0 && (
                   <button onClick={markAllRead} className="text-xs text-[#3B82F6] hover:text-[#2563EB]" style={{ fontWeight: 500 }}>
                     Отметить все как прочитанные
@@ -181,7 +189,7 @@ export function Header({
       {/* User Profile */}
       <div className="relative">
         <button
-          onClick={() => setShowMenu((v) => !v)}
+          onClick={() => { setShowMenu((v) => !v); setShowNotifications(false); }}
           className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
         >
           <div className="w-7 h-7 rounded-full bg-[#3B82F6] flex items-center justify-center text-white text-xs" style={{ fontWeight: 600 }}>
@@ -196,26 +204,26 @@ export function Header({
         {showMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
-              <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-[#3B82F6] flex items-center justify-center text-white text-lg" style={{ fontWeight: 700 }}>
                   {initials}
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-gray-900 truncate" style={{ fontWeight: 700 }}>{displayName}</p>
-                  <p className="text-sm text-gray-500 truncate">{user?.email || "admin@tazalyk.kg"}</p>
+                  <p className="text-gray-900 dark:text-gray-100 truncate" style={{ fontWeight: 700 }}>{displayName}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user?.email || "admin@tazalyk.kg"}</p>
                 </div>
               </div>
 
-              <div className="p-2 space-y-1 border-b border-gray-100">
-                <button onClick={() => { navigate("/settings"); setShowMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  <Settings className="w-4 h-4 text-gray-400" />
+              <div className="p-2 space-y-1 border-b border-gray-100 dark:border-gray-800">
+                <button onClick={() => { navigate("/settings"); setShowMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                  <Settings className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   Настройки профиля
                 </button>
 
-                <button onClick={toggleDarkMode} className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                <button onClick={toggleDarkMode} className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
                   <div className="flex items-center gap-3">
-                    <Moon className="w-4 h-4 text-gray-400" />
+                    <Moon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     Тёмный режим
                   </div>
                   <div className={`w-8 h-4 rounded-full flex items-center p-0.5 transition-colors ${darkMode ? 'bg-[#3B82F6]' : 'bg-gray-300'}`}>
@@ -223,8 +231,11 @@ export function Header({
                   </div>
                 </button>
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  <HelpCircle className="w-4 h-4 text-gray-400" />
+                <button
+                  onClick={() => { setShowMenu(false); toast.info("Поддержка: kara-suu-tazalyk@mail.ru"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <HelpCircle className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   Помощь
                 </button>
               </div>

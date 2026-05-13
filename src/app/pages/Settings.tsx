@@ -361,7 +361,7 @@ export default function Settings() {
                   </p>
                 </div>
 
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                   {[
                     { key: "new_application", label: "Жаңы арыз / Новая заявка", desc: "При поступлении нового обращения" },
                     { key: "status_changed", label: "Статус өзгөрдү / Изменение статуса", desc: "Когда заявка изменила статус" },

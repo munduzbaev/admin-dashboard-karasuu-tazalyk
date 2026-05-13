@@ -12,7 +12,17 @@ export default function NewApplication() {
   const [source, setSource] = useState("phone");
 
   // Form fields
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+996");
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
+    let formatted = "+996";
+    if (digits.length > 3) formatted += ` (${digits.slice(3, 6)}`;
+    if (digits.length >= 6) formatted += `) ${digits.slice(6, 8)}`;
+    if (digits.length >= 8) formatted += `-${digits.slice(8, 10)}`;
+    if (digits.length >= 10) formatted += `-${digits.slice(10, 12)}`;
+    setPhone(formatted);
+  };
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [institutionName, setInstitutionName] = useState("");
@@ -148,7 +158,7 @@ export default function NewApplication() {
                     className={`${inputClass} pl-10`}
                     placeholder="+996 (___) __-__-__"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={handlePhoneChange}
                     required
                   />
                 </div>
