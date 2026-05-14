@@ -13,12 +13,16 @@ import {
   Repeat,
   Tag,
   CheckCircle2,
+  Phone,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FormFeedback, type FeedbackState } from "../components/FormFeedback";
 import { api } from "../api";
 import { toast } from "sonner";
 import { useAutoRefresh } from "../hooks/useAutoRefresh";
+import { formatPhone } from "../utils/phone";
+import { getCompatibilityWarning } from "../utils/transportCompat";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -251,6 +255,7 @@ export default function Schedule() {
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr className="text-left text-gray-500">
                     <th className="px-4 py-3 font-medium">Учреждение</th>
+                    <th className="px-4 py-3 font-medium">Телефон</th>
                     <th className="px-4 py-3 font-medium">Транспорт</th>
                     <th className="px-4 py-3 font-medium">Тип отходов</th>
                     <th className="px-4 py-3 font-medium">Интервал</th>
@@ -264,6 +269,15 @@ export default function Schedule() {
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">{inst(s)}</div>
                         {addr(s) && <div className="text-xs text-gray-400 mt-0.5">{addr(s)}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {s.institution?.contact_phone ? (
+                          <a href={`tel:${s.institution.contact_phone}`} className="text-[#3B82F6] hover:underline text-xs whitespace-nowrap">
+                            {formatPhone(s.institution.contact_phone)}
+                          </a>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-700">{trans(s)}</td>
                       <td className="px-4 py-3 text-gray-700">{waste(s)}</td>
@@ -326,6 +340,14 @@ export default function Schedule() {
                   <div className="flex items-start gap-1.5 text-xs text-gray-500">
                     <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>{addr(s)}</span>
+                  </div>
+                )}
+                {s.institution?.contact_phone && (
+                  <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                    <Phone className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <a href={`tel:${s.institution.contact_phone}`} className="text-[#3B82F6] hover:underline">
+                      {formatPhone(s.institution.contact_phone)}
+                    </a>
                   </div>
                 )}
                 <div className="flex items-start gap-1.5 text-xs text-gray-500">
@@ -447,6 +469,18 @@ export default function Schedule() {
                     </option>
                   ))}
                 </select>
+                {(() => {
+                  const t = transports.find((x) => x.id === form.vehicle_id);
+                  const w = wasteTypes.find((x) => x.id === form.waste_type_id);
+                  const warn = getCompatibilityWarning(t || null, w || null);
+                  if (!warn) return null;
+                  return (
+                    <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span>{warn}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div>

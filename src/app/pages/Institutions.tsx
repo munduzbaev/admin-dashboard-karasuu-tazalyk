@@ -33,6 +33,7 @@ import { BackToSettings } from "../components/BackToSettings";
 import { FormFeedback, type FeedbackState } from "../components/FormFeedback";
 import { can } from "../permissions";
 import { useAutoRefresh } from "../hooks/useAutoRefresh";
+import { normalizePhone, formatPhone, isValidPhone } from "../utils/phone";
 
 type Inst = {
   id: string;
@@ -105,7 +106,7 @@ export default function Institutions() {
       name: i.name || "",
       address: i.address || "",
       contact_person: i.contact_person || "",
-      contact_phone: i.contact_phone || "",
+      contact_phone: i.contact_phone ? formatPhone(i.contact_phone) : "",
     });
     setFieldErrors({});
     setFeedback({ kind: "idle" });
@@ -125,13 +126,23 @@ export default function Institutions() {
       setFeedback({ kind: "error", message: "Заполните название учреждения" });
       return;
     }
+    // Normalize phone before sending; if user typed something but it's invalid, warn
+    let phoneNormalized: string | null = null;
+    if (form.contact_phone.trim()) {
+      phoneNormalized = normalizePhone(form.contact_phone);
+      if (!isValidPhone(phoneNormalized)) {
+        setFieldErrors((p) => ({ ...p, contact_phone: true }));
+        setFeedback({ kind: "error", message: "Телефон должен быть в формате +996 XXX XXX XXX" });
+        return;
+      }
+    }
     setSaving(true);
     setFeedback({ kind: "idle" });
     try {
       const payload: any = { name: form.name.trim() };
       if (form.address.trim()) payload.address = form.address.trim();
       if (form.contact_person.trim()) payload.contact_person = form.contact_person.trim();
-      if (form.contact_phone.trim()) payload.contact_phone = form.contact_phone.trim();
+      if (phoneNormalized) payload.contact_phone = phoneNormalized;
 
       const res = editingId
         ? await api.patch(`/institutions/${editingId}`, payload)
@@ -359,7 +370,7 @@ export default function Institutions() {
                         href={`tel:${i.contact_phone}`}
                         className="text-[#3B82F6] hover:underline"
                       >
-                        {i.contact_phone}
+                        {formatPhone(i.contact_phone)}
                       </a>
                     </div>
                   )}
