@@ -112,10 +112,31 @@ export default function Applications() {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
-      const res = await api.get(`/applications?${params}`);
-      const body = res.data;
+      // Fetch applications + transport list in parallel.
+      // Transport is merged client-side as a fallback for when the API
+      // doesn't include the joined transport object.
+      const [appsRes, transportRes] = await Promise.all([
+        api.get(`/applications?${params}`),
+        api.get("/transport").catch(() => ({ data: { success: false } })),
+      ]);
+      const body = appsRes.data;
       if (body.success) {
-        setApplications(Array.isArray(body.data) ? body.data : []);
+        const list = Array.isArray(body.data) ? body.data : [];
+        // Build id → {name, plate} lookup
+        const transportMap = new Map<string, { name?: string; plate?: string }>();
+        const tBody = transportRes.data;
+        if (tBody?.success && Array.isArray(tBody.data)) {
+          for (const t of tBody.data) {
+            if (t?.id) transportMap.set(String(t.id), { name: t.name, plate: t.plate });
+          }
+        }
+        // Enrich applications: prefer server-provided transport, fall back to lookup
+        const enriched = list.map((a: any) => {
+          if (a.transport && (a.transport.name || a.transport.plate)) return a;
+          const t = a.vehicle_id ? transportMap.get(String(a.vehicle_id)) : null;
+          return t ? { ...a, transport: t } : a;
+        });
+        setApplications(enriched);
       } else {
         toast.error("Ошибка загрузки заявок");
         setApplications([]);
