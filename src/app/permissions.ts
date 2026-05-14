@@ -33,4 +33,8 @@ export const can = {
   // Applications & refusals
   rejectApplication: (u: any) => ["operator", "admin", "super_admin"].includes(getRole(u) ?? ""),
   approveRefusal: (u: any) => ["admin", "super_admin"].includes(getRole(u) ?? ""),
+
+  // Institutions (учреждения)
+  viewInstitutions: (u: any) => ["admin", "super_admin"].includes(getRole(u) ?? ""),
+  editInstitutions: (u: any) => ["admin", "super_admin"].includes(getRole(u) ?? ""),
 };

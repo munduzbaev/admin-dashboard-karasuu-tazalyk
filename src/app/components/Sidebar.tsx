@@ -2,13 +2,11 @@ import { NavLink } from "react-router";
 import {
   LayoutDashboard,
   ClipboardList,
-  Users,
   Settings as SettingsIcon,
   Building2,
   ChevronRight,
   FileText,
   Calendar,
-  Truck,
   BarChart2,
   LogOut,
 } from "lucide-react";
@@ -20,20 +18,14 @@ const NAV_ITEMS = [
   { to: "/applications", label: "Заявки", icon: ClipboardList, end: true },
   { to: "/applications/new", label: "Новая заявка", icon: FileText, end: false },
   { to: "/schedule", label: "График", icon: Calendar, end: false },
-  { to: "/transport", label: "Транспорт", icon: Truck, end: false },
   { to: "/reports", label: "Отчёты", icon: BarChart2, end: false },
-  { to: "/operators", label: "Сотрудники", icon: Users, end: false },
   { to: "/settings", label: "Настройки", icon: SettingsIcon, end: false },
 ];
 
 export function Sidebar() {
-  const { logout, user } = useAuth();
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const { logout } = useAuth();
 
-  const filteredNav = NAV_ITEMS.filter(item => {
-    if (item.to === "/operators") return isAdmin;
-    return true;
-  });
+  const filteredNav = NAV_ITEMS;
 
   return (
     <aside className="w-60 shrink-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col shadow-sm z-10">

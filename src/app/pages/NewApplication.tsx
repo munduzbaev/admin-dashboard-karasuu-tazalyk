@@ -4,6 +4,7 @@ import { Header } from "../components/Header";
 import { MapPin, Phone, Building2, User, FileText, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../api";
+import { normalizePhone, isValidPhone } from "../utils/phone";
 
 export default function NewApplication() {
   const navigate = useNavigate();
@@ -59,11 +60,16 @@ export default function NewApplication() {
       toast.error("Укажите название учреждения");
       return;
     }
+    const normalizedPhone = normalizePhone(phone);
+    if (!isValidPhone(normalizedPhone)) {
+      toast.error("Телефон должен быть в формате +996 XXX XXX XXX");
+      return;
+    }
 
     setLoading(true);
     try {
       const res = await api.post("/applications", {
-        phone: phone.trim(),
+        phone: normalizedPhone,
         address: address.trim(),
         description: description.trim(),
         waste_type: selectedWasteType,
@@ -93,32 +99,32 @@ export default function NewApplication() {
     <div className="flex flex-col h-full overflow-hidden bg-gray-50">
       <Header title="Жаңы арыз / Новая заявка" showSearch={false} />
 
-      <div className="flex-1 overflow-y-auto p-6 flex justify-center">
-        <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-lg text-gray-900" style={{ fontWeight: 600 }}>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex justify-center">
+        <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden self-start mb-6">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-base text-gray-900" style={{ fontWeight: 600 }}>
               Жаңы арыз каттоо / Регистрация нового обращения
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Заполните данные для создания заявки вручную</p>
+            <p className="text-xs text-gray-500 mt-0.5">Заполните данные для создания заявки вручную</p>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="px-5 py-4 space-y-4">
             {/* User type */}
             <div>
-              <label className="block text-sm text-gray-700 mb-3 font-medium">
+              <label className="block text-sm text-gray-700 mb-2 font-medium">
                 Колдонуучу түрү / Тип пользователя
               </label>
-              <div className="flex gap-4">
-                <label className={`flex-1 flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${type === "resident" ? "border-[#3B82F6] bg-blue-50/50" : "border-gray-200 hover:bg-gray-50"}`}>
+              <div className="grid grid-cols-2 gap-2">
+                <label className={`flex items-center gap-2 p-2.5 border rounded-lg cursor-pointer transition-colors ${type === "resident" ? "border-[#3B82F6] bg-blue-50/50" : "border-gray-200 hover:bg-gray-50"}`}>
                   <input type="radio" name="type" value="resident" checked={type === "resident"} onChange={() => setType("resident")} className="hidden" />
-                  <User className={`w-5 h-5 ${type === "resident" ? "text-[#3B82F6]" : "text-gray-400"}`} />
+                  <User className={`w-4 h-4 ${type === "resident" ? "text-[#3B82F6]" : "text-gray-400"}`} />
                   <span className={`text-sm ${type === "resident" ? "text-[#3B82F6] font-medium" : "text-gray-600"}`}>
                     Жашоочу / Житель
                   </span>
                 </label>
-                <label className={`flex-1 flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${type === "institution" ? "border-[#3B82F6] bg-blue-50/50" : "border-gray-200 hover:bg-gray-50"}`}>
+                <label className={`flex items-center gap-2 p-2.5 border rounded-lg cursor-pointer transition-colors ${type === "institution" ? "border-[#3B82F6] bg-blue-50/50" : "border-gray-200 hover:bg-gray-50"}`}>
                   <input type="radio" name="type" value="institution" checked={type === "institution"} onChange={() => setType("institution")} className="hidden" />
-                  <Building2 className={`w-5 h-5 ${type === "institution" ? "text-[#3B82F6]" : "text-gray-400"}`} />
+                  <Building2 className={`w-4 h-4 ${type === "institution" ? "text-[#3B82F6]" : "text-gray-400"}`} />
                   <span className={`text-sm ${type === "institution" ? "text-[#3B82F6] font-medium" : "text-gray-600"}`}>
                     Мекеме / Учреждение
                   </span>
@@ -146,7 +152,7 @@ export default function NewApplication() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-700 mb-1 font-medium">
                   Телефон <span className="text-red-500">*</span>
@@ -181,7 +187,7 @@ export default function NewApplication() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Waste type */}
               <div>
                 <label className="block text-sm text-gray-700 mb-1 font-medium">
@@ -236,7 +242,7 @@ export default function NewApplication() {
               <div className="relative">
                 <FileText className="absolute top-2.5 left-3 w-4 h-4 text-gray-400 pointer-events-none" />
                 <textarea
-                  rows={4}
+                  rows={3}
                   className={`${inputClass} pl-10 resize-none`}
                   placeholder="Кошумча маалымат / Дополнительная информация..."
                   value={description}
@@ -245,7 +251,7 @@ export default function NewApplication() {
               </div>
             </div>
 
-            <div className="pt-4 flex justify-end gap-3">
+            <div className="pt-2 flex justify-end gap-3 border-t border-gray-100 -mx-5 px-5 pt-3">
               <button
                 type="button"
                 onClick={() => navigate("/applications")}

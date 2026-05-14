@@ -26,6 +26,7 @@ import { cn } from "../components/ui/utils";
 import { api } from "../api";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 type SortField = "id" | "created_at" | "status";
 type SortDir = "asc" | "desc";
@@ -106,8 +107,8 @@ export default function Applications() {
     }
   };
 
-  const fetchApplications = useCallback(async () => {
-    setLoading(true);
+  const fetchApplications = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
@@ -122,7 +123,6 @@ export default function Applications() {
       const body = appsRes.data;
       if (body.success) {
         const list = Array.isArray(body.data) ? body.data : [];
-        // Build id → {name, plate} lookup
         const transportMap = new Map<string, { name?: string; plate?: string }>();
         const tBody = transportRes.data;
         if (tBody?.success && Array.isArray(tBody.data)) {
@@ -130,7 +130,6 @@ export default function Applications() {
             if (t?.id) transportMap.set(String(t.id), { name: t.name, plate: t.plate });
           }
         }
-        // Enrich applications: prefer server-provided transport, fall back to lookup
         const enriched = list.map((a: any) => {
           if (a.transport && (a.transport.name || a.transport.plate)) return a;
           const t = a.vehicle_id ? transportMap.get(String(a.vehicle_id)) : null;
@@ -138,19 +137,21 @@ export default function Applications() {
         });
         setApplications(enriched);
       } else {
-        toast.error("Ошибка загрузки заявок");
+        if (showSpinner) toast.error("Ошибка загрузки заявок");
         setApplications([]);
       }
     } catch {
-      toast.error("Ошибка загрузки заявок");
+      if (showSpinner) toast.error("Ошибка загрузки заявок");
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, [statusFilter, sourceFilter]);
 
   useEffect(() => {
-    fetchApplications();
+    fetchApplications(true);
   }, [fetchApplications]);
+
+  useAutoRefresh(() => fetchApplications(false));
 
   const selectedApp = applications.find((a) => String(a.id) === selectedId) ?? null;
 

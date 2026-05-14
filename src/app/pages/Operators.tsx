@@ -6,6 +6,8 @@ import { cn } from "../components/ui/utils";
 import { api } from "../api";
 import { toast } from "sonner";
 import { can } from "../permissions";
+import { BackToSettings } from "../components/BackToSettings";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,8 +57,8 @@ export default function Operators() {
   const canChangeRole = can.changeUserRole(currentUser);
   const canDelete = can.deleteUser(currentUser);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
       const res = await api.get("/users");
       const body = res.data;
@@ -68,11 +70,12 @@ export default function Operators() {
     } catch {
       setUsers([]);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { fetchUsers(true); }, [fetchUsers]);
+  useAutoRefresh(() => fetchUsers(false));
 
   if (!canView) {
     return (
@@ -108,7 +111,7 @@ export default function Operators() {
       const resBody = res?.data;
       if (resBody?.success) {
         toast.success("Аткарылды / Выполнено");
-        await fetchUsers();
+        await fetchUsers(false);
       } else {
         toast.error("Ошибка: " + (resBody?.error || "Не удалось выполнить"));
       }
@@ -143,7 +146,7 @@ export default function Operators() {
         toast.success("Оператор кошулду / Оператор добавлен");
         setShowModal(false);
         setForm(EMPTY_FORM);
-        await fetchUsers();
+        await fetchUsers(false);
       } else {
         toast.error("Ошибка: " + (resBody.error || "Не удалось зарегистрировать"));
       }
@@ -281,6 +284,7 @@ export default function Operators() {
       />
 
       <div className="flex-1 overflow-y-auto p-6">
+        <BackToSettings />
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-gray-500">
             Жалпы / Всего: <span className="text-gray-900 font-semibold">{users.length}</span>
