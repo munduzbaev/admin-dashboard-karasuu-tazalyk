@@ -126,6 +126,20 @@ export default function Schedule() {
     }
   };
 
+  const handleComplete = async (id: string) => {
+    try {
+      const res = await api.patch(`/schedules/${id}/complete`, {});
+      if (res.data?.success) {
+        toast.success("Аткарылды / Выполнено");
+        await fetchData();
+      } else {
+        toast.error("Ошибка: " + (res.data?.error || "Не удалось отметить"));
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    }
+  };
+
   const displayList = activeTab === "tomorrow" ? tomorrow : schedules;
 
   const inputClass =
@@ -221,7 +235,11 @@ export default function Schedule() {
                     </div>
                   )}
                 </div>
-                <button className="w-full py-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-sm transition-colors border border-green-100" style={{ fontWeight: 500 }}>
+                <button
+                  onClick={() => handleComplete(String(s.id))}
+                  className="w-full py-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-sm transition-colors border border-green-100"
+                  style={{ fontWeight: 500 }}
+                >
                   ✅ Аткарылды / Готово
                 </button>
               </div>
@@ -328,6 +346,3 @@ export default function Schedule() {
     </div>
   );
 }
-
-const inputClass =
-  "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 focus:border-[#3B82F6]";

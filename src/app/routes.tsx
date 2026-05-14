@@ -8,7 +8,6 @@ import Login from "./pages/Login";
 import Schedule from "./pages/Schedule";
 import Transport from "./pages/Transport";
 import Reports from "./pages/Reports";
-import Profile from "./pages/Profile";
 import NewApplication from "./pages/NewApplication";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -44,8 +43,8 @@ export const router = createBrowserRouter([
       { path: "transport", element: <Transport /> },
       { path: "operators", element: <Operators /> },
       { path: "reports", element: <Reports /> },
-      { path: "profile", element: <Profile /> },
       { path: "settings", element: <Settings /> },
+      { path: "profile", element: <Navigate to="/settings" replace /> },
     ],
   },
   {

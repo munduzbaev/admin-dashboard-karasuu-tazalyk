@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Users,
-  Settings,
+  Settings as SettingsIcon,
   Building2,
   ChevronRight,
   FileText,
@@ -22,7 +22,8 @@ const NAV_ITEMS = [
   { to: "/schedule", label: "График", icon: Calendar, end: false },
   { to: "/transport", label: "Транспорт", icon: Truck, end: false },
   { to: "/reports", label: "Отчёты", icon: BarChart2, end: false },
-  { to: "/operators", label: "Операторы", icon: Users, end: false },
+  { to: "/operators", label: "Сотрудники", icon: Users, end: false },
+  { to: "/settings", label: "Настройки", icon: SettingsIcon, end: false },
 ];
 
 export function Sidebar() {

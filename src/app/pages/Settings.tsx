@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
 import { Switch } from "../components/ui/switch";
-import { User, Mail, Shield, Bell, Lock, Save, Loader2, Eye, EyeOff, Globe, Database, ChevronRight } from "lucide-react";
+import { User, Mail, Shield, Bell, Lock, Save, Loader2, Eye, EyeOff, ChevronRight } from "lucide-react";
 import { api } from "../api";
 import { toast } from "sonner";
 
@@ -9,15 +9,11 @@ const ROLE_MAP: Record<string, string> = {
   super_admin: "Супер Админ",
   admin: "Администратор",
   operator: "Оператор",
-  senior_operator: "Ст. оператор",
 };
 
 const SECTIONS = [
   { id: "profile", icon: User, label: "Профиль" },
   { id: "notifications", icon: Bell, label: "Уведомления" },
-  { id: "security", icon: Shield, label: "Безопасность" },
-  { id: "system", icon: Globe, label: "Система" },
-  { id: "data", icon: Database, label: "Данные" },
 ];
 
 export default function Settings() {
@@ -385,22 +381,6 @@ export default function Settings() {
                       />
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {(activeSection === "security" || activeSection === "data" || activeSection === "system") && (
-              <div className="max-w-lg">
-                <div>
-                  <h2 className="text-gray-900 mb-1" style={{ fontWeight: 600 }}>
-                    {activeSection === "system" ? "Настройки системы" : SECTIONS.find((s) => s.id === activeSection)?.label}
-                  </h2>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Раздел находится в разработке
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-xl border border-gray-100 p-12 text-center">
-                  <p className="text-gray-400 text-sm">Скоро появится</p>
                 </div>
               </div>
             )}
