@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { Switch } from "../components/ui/switch";
-import { User, Mail, Shield, Bell, Lock, Save, Loader2, Eye, EyeOff, ChevronRight } from "lucide-react";
+import { User, Mail, Shield, Bell, Lock, Save, Loader2, Eye, EyeOff, ChevronRight, Database, Truck, Users as UsersIcon, Building2 } from "lucide-react";
 import { api } from "../api";
 import { toast } from "sonner";
+import { can } from "../permissions";
 
 const ROLE_MAP: Record<string, string> = {
   super_admin: "Супер Админ",
@@ -14,9 +16,11 @@ const ROLE_MAP: Record<string, string> = {
 const SECTIONS = [
   { id: "profile", icon: User, label: "Профиль" },
   { id: "notifications", icon: Bell, label: "Уведомления" },
+  { id: "data", icon: Database, label: "Данные" },
 ];
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("profile");
 
   const [user, setUser] = useState<any>(null);
@@ -384,9 +388,89 @@ export default function Settings() {
                 </div>
               </div>
             )}
+
+            {activeSection === "data" && <DataSection navigate={navigate} />}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Data section ────────────────────────────────────────────────────────────
+
+function DataSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
+  })();
+
+  const cards = [
+    {
+      id: "transport",
+      icon: Truck,
+      title: "Транспорт",
+      desc: "Управление автопарком, расходы, история",
+      to: "/transport",
+      visible: can.viewStaff(currentUser),
+    },
+    {
+      id: "staff",
+      icon: UsersIcon,
+      title: "Сотрудники",
+      desc: "Операторы, администраторы, одобрение регистраций",
+      to: "/operators",
+      visible: can.viewStaff(currentUser),
+    },
+    {
+      id: "institutions",
+      icon: Building2,
+      title: "Учреждения",
+      desc: "Школы, больницы и другие объекты вывоза",
+      to: "/institutions",
+      visible: can.viewInstitutions(currentUser),
+    },
+  ].filter((c) => c.visible);
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h2 className="text-gray-900 mb-1" style={{ fontWeight: 600 }}>
+          Данные
+        </h2>
+        <p className="text-sm text-gray-500">
+          Справочники и сущности системы
+        </p>
+      </div>
+
+      {cards.length === 0 ? (
+        <div className="bg-gray-50 rounded-xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+          Нет доступа к управлению данными
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {cards.map((c) => {
+            const Icon = c.icon;
+            return (
+              <button
+                key={c.id}
+                onClick={() => navigate(c.to)}
+                className="text-left bg-white border border-gray-100 hover:border-[#3B82F6]/40 hover:shadow-sm rounded-xl p-4 transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-50 group-hover:bg-blue-100 rounded-lg transition-colors">
+                    <Icon className="w-5 h-5 text-[#3B82F6]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-0.5">{c.title}</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">{c.desc}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#3B82F6] mt-1 transition-colors" />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -12,9 +12,13 @@ import {
   Save,
   Repeat,
   Tag,
+  CheckCircle2,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { FormFeedback, type FeedbackState } from "../components/FormFeedback";
 import { api } from "../api";
 import { toast } from "sonner";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,9 +68,11 @@ export default function Schedule() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackState>({ kind: "idle" });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
       const [allRes, tomRes, instRes, transRes, wasteRes] = await Promise.all([
         api.get("/schedules"),
@@ -84,17 +90,21 @@ export default function Schedule() {
     } catch (e) {
       console.error("Schedule fetch error:", e);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
+
+  useAutoRefresh(() => fetchData(false));
 
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setFieldErrors({});
+    setFeedback({ kind: "idle" });
     setShowModal(true);
   };
 
@@ -107,16 +117,22 @@ export default function Schedule() {
       interval_days: s.interval_days != null ? String(s.interval_days) : "7",
       next_run_at: s.next_run_at ? String(s.next_run_at).slice(0, 10) : "",
     });
+    setFieldErrors({});
+    setFeedback({ kind: "idle" });
     setShowModal(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.institution_id) {
-      toast.error("Выберите учреждение");
+    const errs: Record<string, boolean> = {};
+    if (!form.institution_id) errs.institution_id = true;
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setFeedback({ kind: "error", message: "Выберите учреждение" });
       return;
     }
     setSaving(true);
+    setFeedback({ kind: "idle" });
     try {
       const payload: any = {
         institution_id: form.institution_id,
@@ -132,15 +148,17 @@ export default function Schedule() {
         : await api.post("/schedules", payload);
 
       if (res.data?.success) {
-        toast.success(editingId ? "График обновлён" : "График добавлен");
-        setShowModal(false);
+        setFeedback({ kind: "success", message: editingId ? "Сохранено" : "График добавлен" });
         await fetchData();
+        setTimeout(() => {
+          setShowModal(false);
+          setFeedback({ kind: "idle" });
+        }, 1100);
       } else {
-        toast.error("Ошибка: " + (res.data?.error || "Не удалось сохранить"));
+        setFeedback({ kind: "error", message: humanizeError(res.data?.error) });
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || err?.response?.data?.error || "Ошибка сохранения";
-      toast.error(msg);
+      setFeedback({ kind: "error", message: humanizeError(err?.response?.data?.detail || err?.message) });
     } finally {
       setSaving(false);
     }
@@ -332,30 +350,55 @@ export default function Schedule() {
       </div>
 
       {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="text-gray-900" style={{ fontWeight: 600 }}>
-                {editingId ? "Изменить график" : "Жаңы жазуу / Новая запись"}
-              </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
+            onClick={() => !saving && setShowModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                <h2 className="text-gray-900" style={{ fontWeight: 600 }}>
+                  {editingId ? "Изменить график" : "Жаңы жазуу / Новая запись"}
+                </h2>
+                <button
+                  onClick={() => !saving && setShowModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={saving}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
+              <FormFeedback state={feedback} />
+
               <div>
                 <label className="block text-sm text-gray-700 mb-1 font-medium">
                   Учреждение <span className="text-red-500">*</span>
                 </label>
                 <select
-                  className={inputClass}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 ${
+                    fieldErrors.institution_id
+                      ? "border-red-400 focus:border-red-400"
+                      : "border-gray-200 focus:border-[#3B82F6]"
+                  }`}
                   value={form.institution_id}
-                  onChange={(e) => setForm((p) => ({ ...p, institution_id: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((p) => ({ ...p, institution_id: e.target.value }));
+                    if (fieldErrors.institution_id) setFieldErrors((p) => ({ ...p, institution_id: false }));
+                  }}
                   required
                 >
                   <option value="">— Выберите —</option>
@@ -368,7 +411,7 @@ export default function Schedule() {
                 </select>
                 {institutions.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1">
-                    Сначала добавьте учреждения в разделе «Учреждения» (скоро будет)
+                    Сначала добавьте учреждения в Настройках → Данные → Учреждения
                   </p>
                 )}
               </div>
@@ -447,18 +490,37 @@ export default function Schedule() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || !form.institution_id}
-                  className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 transition-colors"
+                  disabled={saving || !form.institution_id || feedback.kind === "success"}
+                  className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-70 transition-all ${
+                    feedback.kind === "success"
+                      ? "bg-green-600 text-white"
+                      : "bg-[#3B82F6] hover:bg-[#2563EB] text-white"
+                  }`}
                   style={{ fontWeight: 500 }}
                 >
-                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Сактоо / Сохранить
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : feedback.kind === "success" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  {feedback.kind === "success" ? "Готово" : "Сактоо / Сохранить"}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
+}
+
+function humanizeError(raw: any): string {
+  const text = typeof raw === "string" ? raw : JSON.stringify(raw || "");
+  if (text.includes("PGRST")) return "Ошибка базы данных. Обновите страницу.";
+  if (text.includes("Network") || text.includes("fetch")) return "Нет соединения с сервером";
+  if (text.includes("foreign key") || text.includes("violates")) return "Некорректные данные в полях";
+  return (text || "Что-то пошло не так").slice(0, 200);
 }

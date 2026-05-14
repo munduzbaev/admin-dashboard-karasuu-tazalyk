@@ -12,8 +12,10 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { VehicleModal } from "../components/VehicleModal";
+import { BackToSettings } from "../components/BackToSettings";
 import { can } from "../permissions";
 import { useAuth } from "../context/AuthContext";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   available: { label: "Бош / Свободен", color: "bg-green-50 text-green-600 border-green-200" },
@@ -48,8 +50,8 @@ export default function Transport() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  const fetchTransport = useCallback(async () => {
-    setLoading(true);
+  const fetchTransport = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
       const res = await api.get("/transport");
       const body = res.data;
@@ -62,11 +64,12 @@ export default function Transport() {
       console.error("Fetch transport error:", err);
       setVehicles([]);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchTransport(); }, [fetchTransport]);
+  useEffect(() => { fetchTransport(true); }, [fetchTransport]);
+  useAutoRefresh(() => fetchTransport(false));
 
   const openDetail = async (id: string | number) => {
     setDetailLoading(true);
@@ -126,6 +129,7 @@ export default function Transport() {
       <div className="flex flex-1 overflow-hidden">
         {/* Main list */}
         <div className={`flex-1 overflow-y-auto p-6 ${selectedVehicle ? "hidden xl:block xl:w-[60%] xl:flex-none" : ""}`}>
+          <BackToSettings />
           <div className="flex justify-between items-center mb-6">
             <p className="text-sm text-gray-500">
               Жалпы / Всего: <span className="text-gray-900 font-semibold">{vehicles.length}</span>

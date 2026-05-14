@@ -9,6 +9,7 @@ import Schedule from "./pages/Schedule";
 import Transport from "./pages/Transport";
 import Reports from "./pages/Reports";
 import NewApplication from "./pages/NewApplication";
+import Institutions from "./pages/Institutions";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "schedule", element: <Schedule /> },
       { path: "transport", element: <Transport /> },
       { path: "operators", element: <Operators /> },
+      { path: "institutions", element: <Institutions /> },
       { path: "reports", element: <Reports /> },
       { path: "settings", element: <Settings /> },
       { path: "profile", element: <Navigate to="/settings" replace /> },
