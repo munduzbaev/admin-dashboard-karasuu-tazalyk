@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
-import { Calendar, MapPin, Truck, Phone, Plus, Edit2, Trash2, Loader2, X, Save } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Truck,
+  Plus,
+  Edit2,
+  Trash2,
+  Loader2,
+  X,
+  Save,
+  Repeat,
+  Tag,
+} from "lucide-react";
 import { api } from "../api";
 import { toast } from "sonner";
 import {
@@ -15,54 +27,70 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 
-function formatDate(d: string) {
+function formatDate(d: string | null | undefined) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(d).toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
-const EMPTY_FORM = { object: "", address: "", phone: "", transport: "", nextDate: "" };
+type FormState = {
+  institution_id: string;
+  vehicle_id: string;
+  waste_type_id: string;
+  interval_days: string;
+  next_run_at: string;
+};
+
+const EMPTY_FORM: FormState = {
+  institution_id: "",
+  vehicle_id: "",
+  waste_type_id: "",
+  interval_days: "7",
+  next_run_at: "",
+};
 
 export default function Schedule() {
-  const [activeTab, setActiveTab] = useState<"table" | "tomorrow">("tomorrow");
+  const [activeTab, setActiveTab] = useState<"table" | "tomorrow">("table");
   const [schedules, setSchedules] = useState<any[]>([]);
   const [tomorrow, setTomorrow] = useState<any[]>([]);
+  const [institutions, setInstitutions] = useState<any[]>([]);
+  const [transports, setTransports] = useState<any[]>([]);
+  const [wasteTypes, setWasteTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [allRes, tomRes] = await Promise.all([
+      const [allRes, tomRes, instRes, transRes, wasteRes] = await Promise.all([
         api.get("/schedules"),
         api.get("/schedules/tomorrow"),
+        api.get("/institutions").catch(() => ({ data: { success: false } })),
+        api.get("/transport").catch(() => ({ data: { success: false } })),
+        api.get("/waste_types").catch(() => ({ data: { success: false } })),
       ]);
-      const allBody = allRes.data;
-      const tomBody = tomRes.data;
 
-      if (allBody.success) {
-        setSchedules(Array.isArray(allBody.data) ? allBody.data : []);
-      } else {
-        setSchedules([]);
-      }
-
-      if (tomBody.success) {
-        setTomorrow(Array.isArray(tomBody.data) ? tomBody.data : []);
-      } else {
-        setTomorrow([]);
-      }
+      setSchedules(allRes.data?.success && Array.isArray(allRes.data.data) ? allRes.data.data : []);
+      setTomorrow(tomRes.data?.success && Array.isArray(tomRes.data.data) ? tomRes.data.data : []);
+      setInstitutions(instRes.data?.success && Array.isArray(instRes.data.data) ? instRes.data.data : []);
+      setTransports(transRes.data?.success && Array.isArray(transRes.data.data) ? transRes.data.data : []);
+      setWasteTypes(wasteRes.data?.success && Array.isArray(wasteRes.data.data) ? wasteRes.data.data : []);
     } catch (e) {
-      console.error("Fetch schedule error:", e);
-      setSchedules([]);
-      setTomorrow([]);
+      console.error("Schedule fetch error:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const openAdd = () => {
     setEditingId(null);
@@ -73,40 +101,46 @@ export default function Schedule() {
   const openEdit = (s: any) => {
     setEditingId(String(s.id));
     setForm({
-      object: s.object || "",
-      address: s.address || "",
-      phone: s.phone || "",
-      transport: s.transport || "",
-      nextDate: s.nextDate || s.next_date || "",
+      institution_id: s.institution_id || "",
+      vehicle_id: s.vehicle_id || "",
+      waste_type_id: s.waste_type_id || "",
+      interval_days: s.interval_days != null ? String(s.interval_days) : "7",
+      next_run_at: s.next_run_at ? String(s.next_run_at).slice(0, 10) : "",
     });
     setShowModal(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.object.trim()) { toast.error("Укажите объект"); return; }
+    if (!form.institution_id) {
+      toast.error("Выберите учреждение");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = {
-        object: form.object,
-        address: form.address,
-        phone: form.phone,
-        transport: form.transport,
-        next_date: form.nextDate,
+      const payload: any = {
+        institution_id: form.institution_id,
       };
+      if (form.vehicle_id) payload.vehicle_id = form.vehicle_id;
+      if (form.waste_type_id) payload.waste_type_id = form.waste_type_id;
+      const ival = parseInt(form.interval_days, 10);
+      if (!isNaN(ival) && ival > 0) payload.interval_days = ival;
+      if (form.next_run_at) payload.next_run_at = form.next_run_at;
+
       const res = editingId
         ? await api.patch(`/schedules/${editingId}`, payload)
         : await api.post("/schedules", payload);
-      const resBody = res.data;
-      if (resBody.success) {
-        toast.success(editingId ? "График жаңыртылды / Обновлено" : "График кошулду / Добавлено");
+
+      if (res.data?.success) {
+        toast.success(editingId ? "График обновлён" : "График добавлен");
         setShowModal(false);
         await fetchData();
       } else {
-        toast.error("Ошибка: " + (resBody.error || "Не удалось сохранить"));
+        toast.error("Ошибка: " + (res.data?.error || "Не удалось сохранить"));
       }
-    } catch {
-      toast.error("Ошибка сохранения");
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.error || "Ошибка сохранения";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -115,8 +149,8 @@ export default function Schedule() {
   const handleDelete = async (id: string) => {
     try {
       const res = await api.delete(`/schedules/${id}`);
-      if (res.data.success) {
-        toast.success("Жок кылынды / Удалено");
+      if (res.data?.success) {
+        toast.success("Удалено");
         await fetchData();
       } else {
         toast.error("Ошибка удаления");
@@ -140,34 +174,45 @@ export default function Schedule() {
     }
   };
 
-  const displayList = activeTab === "tomorrow" ? tomorrow : schedules;
-
   const inputClass =
     "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 focus:border-[#3B82F6]";
+
+  const inst = (s: any) => s.institution?.name || "—";
+  const addr = (s: any) => s.institution?.address || "";
+  const trans = (s: any) =>
+    s.transport ? `${s.transport.name}${s.transport.plate ? ` · ${s.transport.plate}` : ""}` : "—";
+  const waste = (s: any) => s.waste_type?.name || "—";
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header title="График вывоза" showSearch={false} />
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex bg-white rounded-lg p-1 border border-gray-200">
+      <div className="flex-1 overflow-auto p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="inline-flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab("table")}
-              className={`px-4 py-1.5 rounded-md text-sm transition-all ${activeTab === "table" ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-500 hover:text-gray-700"}`}
+              className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                activeTab === "table" ? "bg-white shadow-sm text-gray-900" : "text-gray-500"
+              }`}
+              style={{ fontWeight: 500 }}
             >
               Таблица
             </button>
             <button
               onClick={() => setActiveTab("tomorrow")}
-              className={`px-4 py-1.5 rounded-md text-sm transition-all ${activeTab === "tomorrow" ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-500 hover:text-gray-700"}`}
+              className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                activeTab === "tomorrow" ? "bg-white shadow-sm text-gray-900" : "text-gray-500"
+              }`}
+              style={{ fontWeight: 500 }}
             >
               Эртең / Завтра
             </button>
           </div>
+
           <button
             onClick={openAdd}
-            className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm flex items-center gap-2 transition-colors"
             style={{ fontWeight: 500 }}
           >
             <Plus className="w-4 h-4" />
@@ -176,68 +221,106 @@ export default function Schedule() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            Жүктөлүүдө / Загрузка...
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
           </div>
-        ) : displayList.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-gray-400 text-sm">Маалымат жок / Нет данных</p>
-          </div>
-        ) : activeTab === "tomorrow" ? (
+        ) : activeTab === "table" ? (
+          schedules.length === 0 ? (
+            <div className="text-center py-20 text-gray-400 text-sm">Маалымат жок / Нет данных</div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr className="text-left text-gray-500">
+                    <th className="px-4 py-3 font-medium">Учреждение</th>
+                    <th className="px-4 py-3 font-medium">Транспорт</th>
+                    <th className="px-4 py-3 font-medium">Тип отходов</th>
+                    <th className="px-4 py-3 font-medium">Интервал</th>
+                    <th className="px-4 py-3 font-medium">Следующий</th>
+                    <th className="px-4 py-3 font-medium text-right">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schedules.map((s) => (
+                    <tr key={s.id} className="border-t border-gray-50 hover:bg-gray-50/50">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{inst(s)}</div>
+                        {addr(s) && <div className="text-xs text-gray-400 mt-0.5">{addr(s)}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{trans(s)}</td>
+                      <td className="px-4 py-3 text-gray-700">{waste(s)}</td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {s.interval_days ? `Раз в ${s.interval_days} дн.` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{formatDate(s.next_run_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex gap-1">
+                          <button
+                            onClick={() => openEdit(s)}
+                            className="p-1.5 text-gray-400 hover:text-[#3B82F6] hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Редактировать"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Удалить график?</AlertDialogTitle>
+                                <AlertDialogDescription>Это действие необратимо.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(String(s.id))}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Удалить
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : tomorrow.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 text-sm">Маалымат жок / Нет данных</div>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayList.map((s: any) => (
-              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-gray-900" style={{ fontWeight: 600 }}>{s.object}</h3>
-                  <div className="flex gap-1">
-                    <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-[#3B82F6] hover:bg-blue-50 transition-colors">
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Чындап эле жок кылуу керекпи?</AlertDialogTitle>
-                          <AlertDialogDescription>Вы уверены, что хотите удалить эту запись?</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Жок / Отмена</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(String(s.id))} className="bg-red-600 hover:bg-red-700">
-                            Ооба / Удалить
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+            {tomorrow.map((s) => (
+              <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-4 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-semibold text-gray-900">{inst(s)}</div>
+                  <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {formatDate(s.next_run_at)}
+                  </span>
                 </div>
-                <div className="space-y-2 mb-4">
-                  {s.address && (
-                    <div className="flex items-start gap-2 text-sm text-gray-600">
-                      <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                      <span>{s.address}</span>
-                    </div>
-                  )}
-                  {s.transport && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Truck className="w-4 h-4 text-gray-400 shrink-0" />
-                      <span>{s.transport}</span>
-                    </div>
-                  )}
-                  {s.phone && (
-                    <div className="flex items-center gap-2 text-sm text-[#3B82F6]">
-                      <Phone className="w-4 h-4 shrink-0" />
-                      <a href={`tel:${s.phone}`} className="hover:underline">{s.phone}</a>
-                    </div>
-                  )}
+                {addr(s) && (
+                  <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                    <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{addr(s)}</span>
+                  </div>
+                )}
+                <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                  <Truck className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{trans(s)}</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                  <Tag className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{waste(s)}</span>
                 </div>
                 <button
                   onClick={() => handleComplete(String(s.id))}
-                  className="w-full py-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-sm transition-colors border border-green-100"
+                  className="w-full mt-2 py-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-sm transition-colors border border-green-100"
                   style={{ fontWeight: 500 }}
                 >
                   ✅ Аткарылды / Готово
@@ -245,98 +328,131 @@ export default function Schedule() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50/80 border-b border-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Объект</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Дарек / Адрес</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Транспорт</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Кийинки / Следующий</th>
-                  <th className="px-4 py-3 w-20" />
-                </tr>
-              </thead>
-              <tbody>
-                {displayList.map((s: any) => (
-                  <tr key={s.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-medium text-gray-800">{s.object}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.address || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.transport || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatDate(s.nextDate || s.next_date)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-[#3B82F6] hover:bg-blue-50 transition-colors">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <button className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Чындап эле жок кылуу керекпи?</AlertDialogTitle>
-                              <AlertDialogDescription>Вы уверены, что хотите удалить эту запись?</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Жок / Отмена</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(String(s.id))} className="bg-red-600 hover:bg-red-700">
-                                Ооба / Удалить
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         )}
       </div>
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-gray-900 text-base" style={{ fontWeight: 600 }}>
-                {editingId ? "Жаңыртуу / Редактировать" : "Жаңы жазуу / Новая запись"}
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h2 className="text-gray-900" style={{ fontWeight: 600 }}>
+                {editingId ? "Изменить график" : "Жаңы жазуу / Новая запись"}
               </h2>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400">
-                <X className="w-4 h-4" />
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              {[
-                { label: "Объект *", key: "object", placeholder: "Мектеп №1 / Школа №1" },
-                { label: "Дарек / Адрес", key: "address", placeholder: "Ленин көч. 45" },
-                { label: "Телефон", key: "phone", placeholder: "+996 555 xxxxxx" },
-                { label: "Транспорт", key: "transport", placeholder: "Мусоровоз 01KG123AB" },
-                { label: "Кийинки вывоз / Следующий вывоз", key: "nextDate", type: "date", placeholder: "" },
-              ].map((f) => (
-                <div key={f.key}>
-                  <label className="block text-sm text-gray-700 mb-1 font-medium">{f.label}</label>
-                  <input
-                    type={f.type || "text"}
-                    className={inputClass}
-                    placeholder={f.placeholder}
-                    value={(form as any)[f.key]}
-                    onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                    required={f.key === "object"}
-                  />
-                </div>
-              ))}
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+
+            <form onSubmit={handleSave} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1 font-medium">
+                  Учреждение <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className={inputClass}
+                  value={form.institution_id}
+                  onChange={(e) => setForm((p) => ({ ...p, institution_id: e.target.value }))}
+                  required
+                >
+                  <option value="">— Выберите —</option>
+                  {institutions.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                      {i.address ? ` · ${i.address}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {institutions.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Сначала добавьте учреждения в разделе «Учреждения» (скоро будет)
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1 font-medium">Тип отходов</label>
+                <select
+                  className={inputClass}
+                  value={form.waste_type_id}
+                  onChange={(e) => setForm((p) => ({ ...p, waste_type_id: e.target.value }))}
+                >
+                  <option value="">— Не указан —</option>
+                  {wasteTypes.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1 font-medium">Транспорт</label>
+                <select
+                  className={inputClass}
+                  value={form.vehicle_id}
+                  onChange={(e) => setForm((p) => ({ ...p, vehicle_id: e.target.value }))}
+                >
+                  <option value="">— Назначить позже —</option>
+                  {transports.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.plate ? ` · ${t.plate}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1 font-medium flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5" />
+                  Интервал (дней)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  className={inputClass}
+                  value={form.interval_days}
+                  onChange={(e) => setForm((p) => ({ ...p, interval_days: e.target.value }))}
+                  placeholder="7"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Раз в столько дней повторять вывоз. После «Готово» дата сдвигается автоматически.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1 font-medium flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Следующий вывоз
+                </label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.next_run_at}
+                  onChange={(e) => setForm((p) => ({ ...p, next_run_at: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm transition-colors"
+                >
                   Жокко чыгаруу
                 </button>
-                <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-60">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {saving ? "Сакталууда..." : "Сактоо / Сохранить"}
+                <button
+                  type="submit"
+                  disabled={saving || !form.institution_id}
+                  className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 transition-colors"
+                  style={{ fontWeight: 500 }}
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Сактоо / Сохранить
                 </button>
               </div>
             </form>
