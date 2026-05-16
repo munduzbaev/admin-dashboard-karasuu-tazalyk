@@ -11,6 +11,17 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; dot: str
     className: "bg-amber-50 text-amber-700 border-amber-200",
     dot: "bg-amber-500",
   },
+  // iter3 driver workflow
+  assigned: {
+    label: "Дайындалды / Назначено",
+    className: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    dot: "bg-cyan-500",
+  },
+  accepted: {
+    label: "Кабыл алынды / Принято водителем",
+    className: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    dot: "bg-indigo-500",
+  },
   waiting_user: {
     label: "Күтүүдө / Ожидание",
     className: "bg-purple-50 text-purple-700 border-purple-200",

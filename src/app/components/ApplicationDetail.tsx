@@ -221,28 +221,41 @@ export function ApplicationDetail({
   const handleAssignTransport = async () => {
     if (!selectedTransportId) return;
     try {
-      const user = (() => {
-        try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
-      })();
-
-      await api.patch(`/applications/${application.id}`, {
-        status: 'in_progress',
+      // New iter3 flow: dedicated endpoint that sets status='assigned',
+      // records assigned_at, and fires the n8n webhook so the driver
+      // gets a Telegram notification immediately.
+      const res = await api.post(`/applications/${application.id}/assign`, {
         vehicle_id: selectedTransportId,
-        operator_id: user.id || null
       });
 
-      await api.patch(`/transport/${selectedTransportId}`, {
-        status: 'working',
-        current_task: `Заявка #${application.id} — ${application.address || ""}`
-      });
+      if (!res.data?.success) {
+        const errMap: Record<string, string> = {
+          vehicle_not_found: "Транспорт не найден",
+          vehicle_inactive: "Транспорт неактивен",
+          application_not_found: "Заявка не найдена",
+        };
+        toast.error(errMap[res.data?.error] || "Ошибка при назначении транспорта");
+        return;
+      }
 
-      toast.success("Транспорт дайындалды / Транспорт назначен");
+      // If the webhook didn't reach n8n, the assignment still succeeded — but
+      // warn the operator they should call the driver by phone.
+      const wh = res.data?.webhook;
+      if (wh && !wh.ok) {
+        toast.warning(
+          "Транспорт назначен, но уведомление водителю не отправлено. Позвоните напрямую."
+        );
+      } else {
+        toast.success("Транспорт дайындалды / Транспорт назначен");
+      }
+
       setTransportModalOpen(false);
       setSelectedTransportId("");
       onRefresh?.();
-      onStatusChange(String(application.id), "in_progress");
-    } catch (err) {
-      toast.error("Ошибка при назначении транспорта");
+      onStatusChange(String(application.id), "assigned");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.error || "Ошибка при назначении транспорта");
     }
   };
 

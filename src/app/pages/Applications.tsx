@@ -34,6 +34,8 @@ type SortDir = "asc" | "desc";
 const STATUS_OPTIONS = [
   { value: "all", label: "Все статусы" },
   { value: "new", label: "Жаңы / Новая" },
+  { value: "assigned", label: "Дайындалды / Назначено" },
+  { value: "accepted", label: "Кабыл алынды / Принято водителем" },
   { value: "in_progress", label: "Иштелүүдө / В работе" },
   { value: "pending_admin_approval", label: "Админ кароосунда / На одобрении" },
   { value: "completed", label: "Жабылды / Завершено" },
