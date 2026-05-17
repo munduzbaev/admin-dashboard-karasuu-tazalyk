@@ -1,5 +1,5 @@
 import { Header } from "../components/Header";
-import { Download, Calendar as CalendarIcon, TrendingUp, Loader2 } from "lucide-react";
+import { Download, Calendar as CalendarIcon, TrendingUp, Loader2, Truck } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -20,6 +20,22 @@ function getDefaultRange() {
   };
 }
 
+function addDays(base: string, days: number) {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysAgo(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
@@ -32,6 +48,18 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+const TYPE_COLORS: Record<string, string> = {
+  мусоровоз: "bg-blue-100 text-blue-700",
+  ассенизатор: "bg-purple-100 text-purple-700",
+  трактор: "bg-orange-100 text-orange-700",
+};
+
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  available: { label: "Бош", cls: "bg-green-100 text-green-700" },
+  working:   { label: "Иштейт", cls: "bg-blue-100 text-blue-700" },
+  repair:    { label: "Ремонт", cls: "bg-red-100 text-red-700" },
+};
+
 export default function Reports() {
   const [dateFrom, setDateFrom] = useState(getDefaultRange().from);
   const [dateTo, setDateTo] = useState(getDefaultRange().to);
@@ -39,6 +67,7 @@ export default function Reports() {
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportingTransport, setExportingTransport] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -62,7 +91,6 @@ export default function Reports() {
         if (appsBody.success) {
           setApplications(Array.isArray(appsBody.data) ? appsBody.data : []);
         } else {
-          // fallback to main applications endpoint
           const fallback = await api.get("/applications");
           const fbBody = fallback.data;
           if (fbBody.success) {
@@ -87,7 +115,6 @@ export default function Reports() {
   const handleExport = async () => {
     try {
       setExporting(true);
-      // Dynamic import of xlsx
       let XLSX: any;
       try {
         XLSX = await import("xlsx");
@@ -113,6 +140,39 @@ export default function Reports() {
       toast.error("Экспорт катасы / Ошибка экспорта");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleTransportExport = async () => {
+    const transportUsage: any[] = summary?.transport_usage ?? [];
+    if (!transportUsage.length) return;
+    try {
+      setExportingTransport(true);
+      let XLSX: any;
+      try {
+        XLSX = await import("xlsx");
+      } catch {
+        toast.error("Установите xlsx: npm install xlsx");
+        return;
+      }
+      const rows = transportUsage.map((t: any) => ({
+        Транспорт: t.name || "—",
+        "Гос номер": t.plate || "—",
+        Тип: t.type || "—",
+        "Всего рейсов": t.total_trips,
+        Выполнено: t.completed_trips,
+        Активных: t.active_trips,
+        Статус: STATUS_META[t.status]?.label ?? t.status ?? "—",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Транспорт");
+      XLSX.writeFile(wb, `tazalyk-transport-${dateFrom}-${dateTo}.xlsx`);
+      toast.success("Файл жүктөлдү / Файл сохранён");
+    } catch {
+      toast.error("Экспорт катасы / Ошибка экспорта");
+    } finally {
+      setExportingTransport(false);
     }
   };
 
@@ -172,6 +232,23 @@ export default function Reports() {
   const completed = applications.filter((a) => a.status === "completed").length;
   const pending = applications.filter((a) => ["new", "in_progress"].includes(a.status)).length;
 
+  const transportUsage: any[] = summary?.transport_usage ?? [];
+  const totalTripsSum = transportUsage.reduce((s, t) => s + (t.total_trips || 0), 0);
+  const completedTripsSum = transportUsage.reduce((s, t) => s + (t.completed_trips || 0), 0);
+  const activeTripsSum = transportUsage.reduce((s, t) => s + (t.active_trips || 0), 0);
+
+  // Top performers
+  const mostTrips = transportUsage[0] ?? null;
+  const mostCompleted = [...transportUsage].sort((a, b) => b.completed_trips - a.completed_trips)[0] ?? null;
+  const workingCount = transportUsage.filter(t => t.status === "working").length;
+
+  const QUICK_FILTERS = [
+    { label: "7 күн", days: 7 },
+    { label: "30 күн", days: 30 },
+    { label: "3 ай", days: 90 },
+    { label: "6 ай", days: 180 },
+  ];
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header title="Отчёттор / Отчёты" showSearch={false} />
@@ -179,7 +256,7 @@ export default function Reports() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Controls */}
         <div className="flex flex-wrap justify-between items-center gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 text-sm shadow-sm">
               <CalendarIcon className="w-4 h-4 text-gray-400" />
               <input
@@ -198,6 +275,17 @@ export default function Reports() {
                 onChange={(e) => setDateTo(e.target.value)}
                 className="text-sm text-gray-700 bg-transparent outline-none"
               />
+            </div>
+            <div className="flex gap-1">
+              {QUICK_FILTERS.map(f => (
+                <button
+                  key={f.days}
+                  onClick={() => { setDateTo(today()); setDateFrom(daysAgo(f.days)); }}
+                  className="px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors"
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
           </div>
           <button
@@ -281,30 +369,131 @@ export default function Reports() {
           ))}
         </div>
 
-        {/* Transport usage */}
-        {!loading && summary?.transport_usage?.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h3 className="text-gray-900 text-sm font-semibold">Транспорт колдонуу / Использование транспорта</h3>
+        {/* Transport section */}
+        {!loading && transportUsage.length > 0 && (
+          <div className="space-y-4">
+            {/* Top performers */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <span className="text-2xl leading-none mt-0.5">🥇</span>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Эң көп рейс / Больше всего рейсов</p>
+                  <p className="font-semibold text-gray-800 text-sm">{mostTrips?.name ?? "—"}</p>
+                  <p className="text-green-600 text-xs font-medium mt-0.5">{mostTrips?.total_trips ?? 0} рейс</p>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <span className="text-2xl leading-none mt-0.5">🚛</span>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Эң көп аяктады / Больше всего выполнено</p>
+                  <p className="font-semibold text-gray-800 text-sm">{mostCompleted?.name ?? "—"}</p>
+                  <p className="text-blue-600 text-xs font-medium mt-0.5">{mostCompleted?.completed_trips ?? 0} аяктады</p>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <span className="text-2xl leading-none mt-0.5">⚡</span>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Азыр иштейт / Сейчас работают</p>
+                  <p className="font-semibold text-gray-800 text-sm">{workingCount} транспорт</p>
+                  <p className="text-yellow-600 text-xs font-medium mt-0.5">активдүү / активных</p>
+                </div>
+              </div>
             </div>
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50/80 border-b border-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Транспорт</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Рейстер / Рейсы</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Жүк / Объём</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.transport_usage.map((t: any, i: number) => (
-                  <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-medium text-gray-800">{t.name || t.plate || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{t.trips ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{t.volume ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+            {/* Transport table */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-gray-400" />
+                  <h3 className="text-gray-900 text-sm font-semibold">Транспорт колдонуу / Использование транспорта</h3>
+                </div>
+                <button
+                  onClick={handleTransportExport}
+                  disabled={exportingTransport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-50 transition-colors shadow-sm font-medium disabled:opacity-50"
+                >
+                  {exportingTransport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  📥 Excel
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50/80 border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Транспорт</th>
+                      <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Гос номер</th>
+                      <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Тип</th>
+                      <th className="px-4 py-3 text-center text-xs text-gray-500 font-medium">Бардыгы / Всего</th>
+                      <th className="px-4 py-3 text-center text-xs text-gray-500 font-medium">Аяктады / Выполнено</th>
+                      <th className="px-4 py-3 text-center text-xs text-gray-500 font-medium">Активдүү / Активных</th>
+                      <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Таштанды түрлөрү</th>
+                      <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transportUsage.map((t: any, i: number) => {
+                      const sm = STATUS_META[t.status] ?? { label: t.status ?? "—", cls: "bg-gray-100 text-gray-600" };
+                      const typeCls = TYPE_COLORS[t.type] ?? "bg-gray-100 text-gray-600";
+                      const topWaste = Object.entries(t.waste_breakdown || {})
+                        .sort((a: any, b: any) => b[1] - a[1])
+                        .slice(0, 2) as [string, number][];
+                      return (
+                        <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-800">{t.name || "—"}</td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 font-mono">{t.plate || "—"}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {t.type ? (
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeCls}`}>{t.type}</span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-bold text-sm ${t.total_trips > 0 ? "text-green-600" : "text-gray-400"}`}>
+                              {t.total_trips}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="text-green-600 font-medium">{t.completed_trips}</span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={t.active_trips > 0 ? "text-yellow-600 font-medium" : "text-gray-400"}>
+                              {t.active_trips}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {topWaste.length === 0 ? (
+                              <span className="text-gray-400">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {topWaste.map(([wt, cnt]) => (
+                                  <span key={wt} className="px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
+                                    {wt}: {cnt}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${sm.cls}`}>{sm.label}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {/* Summary row */}
+                    <tr className="bg-gray-50 border-t border-gray-200">
+                      <td className="px-4 py-3 font-bold text-gray-700 text-xs uppercase tracking-wide" colSpan={3}>
+                        Жыйынтык / Итого
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-green-700">{totalTripsSum}</td>
+                      <td className="px-4 py-3 text-center font-bold text-green-700">{completedTripsSum}</td>
+                      <td className="px-4 py-3 text-center font-bold text-yellow-700">{activeTripsSum}</td>
+                      <td className="px-4 py-3" colSpan={2} />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>
